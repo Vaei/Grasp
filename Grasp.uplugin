@@ -10,7 +10,7 @@
 	"DocsURL": "https://github.com/Vaei/Grasp/wiki",
 	"MarketplaceURL": "",
 	"CanContainContent": true,
-	"IsBetaVersion": false,
+	"IsBetaVersion": true,
 	"IsExperimentalVersion": false,
 	"Installed": false,
 	"Modules": [

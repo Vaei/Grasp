@@ -4,6 +4,8 @@
 #include "Filtering/GraspFilter_Graspable.h"
 
 #include "Graspable.h"
+#include "GraspData.h"
+#include "Abilities/GameplayAbility.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GraspFilter_Graspable)
 
@@ -41,7 +43,14 @@ bool UGraspFilter_Graspable::ShouldFilterTarget(const FTargetingRequestHandle& T
 	}
 
 	// No data
-	if (!Graspable->GetGraspData())
+	const UGraspData* GraspData = Graspable->GetGraspData();
+	if (!GraspData)
+	{
+		return true;
+	}
+
+	// No ability to grant
+	if (!GraspData->GraspAbility)
 	{
 		return true;
 	}

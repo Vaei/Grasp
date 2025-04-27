@@ -312,26 +312,19 @@ void UGraspComponent::GraspTargetsReady(const TArray<FGraspScanResult>& Results)
 		{
 #if UE_ENABLE_DEBUG_DRAWING || ENABLE_VISUAL_LOG
 			DrawDebugGrantAbilityLine(Component, FColor::Red);
-			// Draw text showing our normalized distance vs the max
 
+			// Debug text along the line showing how far we are from granting the ability
+			if (FGraspCVars::bGiveAbilityDebug)
+			{
+				const float GrantAbilityPct = 100.f * FMath::Clamp<float>(UKismetMathLibrary::NormalizeToRange(Result.NormalizedScanDistance, RequiredDistance, 1.f), 0.f, 1.f);
 
-			// Required distance is 0.7 default
-			// NormalizedScanDistance is 0-1, and is our current normalized distance to the target
-			// How close are we to reaching the required distance?
-			// NormalizedDistance is the distance we need to be at to be able to grant the ability
-			// NormalizedDistance = RequiredDistance / NormalizedScanDistance isn't useful, we need the % between 0 and required distance based on current
-			const float RemainingDistance = Result.NormalizedScanDistance - RequiredDistance;
-			const float NormalizedDistance = RequiredDistance / RemainingDistance;
+				const FVector TextLocation = GetTargetingSource() ? FMath::Lerp<FVector>(Component->GetComponentLocation(),
+					GetTargetingSource()->GetActorLocation(), RequiredDistance) : Component->GetComponentLocation();
 
-			// Determine the pct between RequiredDistance and NormalizedScanDistance
-			const float Pct = 100.f * FMath::Clamp<float>(UKismetMathLibrary::NormalizeToRange(Result.NormalizedScanDistance, RequiredDistance, 1.f), 0.f, 1.f);
-			
-			// const float NormalizedDistance = Graspable->GetGraspData()->NormalizedGrantAbilityDistance / Result.NormalizedScanDistance;
-			const FVector TextLocation = GetTargetingSource() ? FMath::Lerp<FVector>(Component->GetComponentLocation(),
-				GetTargetingSource()->GetActorLocation(), RequiredDistance) : Component->GetComponentLocation();
-			DrawDebugString(GetWorld(), TextLocation + FVector(0.f, 0.f, 10.f),
-				FString::Printf(TEXT("%.2f%%"), Pct),
-				nullptr, FColor::Red, GetWorld()->GetDeltaSeconds() * 2.f, true);
+				DrawDebugString(GetWorld(), TextLocation + FVector(0.f, 0.f, 10.f),
+					FString::Printf(TEXT("%.2f%%"), GrantAbilityPct),
+					nullptr, FColor::Red, GetWorld()->GetDeltaSeconds() * 2.f, true);
+			}
 #endif
 			
 			UE_LOG(LogGrasp, VeryVerbose,

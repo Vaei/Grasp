@@ -128,6 +128,7 @@ void UAbilityTask_GraspFaceTowards::SharedInitAndApply()
 		ABILITY_LOG(Warning, TEXT("UHonorAbilityTask_FaceTowards called in Ability %s with null MovementComponent; Task Instance Name %s."), 
 			Ability ? *Ability->GetName() : TEXT("NULL"), 
 			*InstanceName.ToString());
+		
 		EndTask();
 	}
 }

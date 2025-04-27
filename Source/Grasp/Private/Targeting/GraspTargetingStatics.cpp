@@ -8,6 +8,8 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "Components/PrimitiveComponent.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GraspTargetingStatics)
 
@@ -93,7 +95,9 @@ FVector UGraspTargetingStatics::GetSourceOffset(const FTargetingRequestHandle& T
 	return FVector::ZeroVector;
 }
 
-FQuat UGraspTargetingStatics::GetSourceRotation(const FTargetingRequestHandle& TargetingHandle, EGraspTargetRotationSource RotationSource)
+FQuat UGraspTargetingStatics::GetSourceRotation(const FTargetingRequestHandle& TargetingHandle,
+	EGraspTargetRotationSource RotationSource, TArray<EGraspTargetRotationSource> FallbackRotationSources,
+	int32 FallbackIndex)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspTargetingStatics::GetSourceRotation);
 	
@@ -119,9 +123,41 @@ FQuat UGraspTargetingStatics::GetSourceRotation(const FTargetingRequestHandle& T
 					}
 				}
 				break;
+			case EGraspTargetRotationSource::Velocity:
+				if (const APawn* Pawn = Cast<APawn>(SourceContext->SourceActor))
+				{
+					if (!Pawn->GetVelocity().IsNearlyZero())
+					{
+						return Pawn->GetVelocity().ToOrientationQuat();
+					}
+				}
+				break;
+			case EGraspTargetRotationSource::Acceleration:
+				{
+					if (const ACharacter* Character = Cast<ACharacter>(SourceContext->SourceActor))
+					{
+						if (Character->GetCharacterMovement())
+						{
+							if (!Character->GetCharacterMovement()->GetCurrentAcceleration().IsNearlyZero())
+							{
+								return Character->GetCharacterMovement()->GetCurrentAcceleration().ToOrientationQuat();
+							}
+						}
+					}
+					break;
+				}
 			}
 		}
 	}
+
+	// Fallback to other sources
+	if (FallbackRotationSources.IsValidIndex(FallbackIndex))
+	{
+		RotationSource = FallbackRotationSources[FallbackIndex];
+		FallbackIndex++;
+		return GetSourceRotation(TargetingHandle, RotationSource, FallbackRotationSources, FallbackIndex);
+	}
+	
 	return FQuat::Identity;
 }
 

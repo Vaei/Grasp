@@ -32,7 +32,9 @@ public:
 
 	/** Native event to get the source rotation for the AOE  */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
-	static FQuat GetSourceRotation(const FTargetingRequestHandle& TargetingHandle, EGraspTargetRotationSource RotationSource);
+	static FQuat GetSourceRotation(const FTargetingRequestHandle& TargetingHandle,
+		EGraspTargetRotationSource RotationSource, TArray<EGraspTargetRotationSource> FallbackRotationSources,
+		int32 FallbackIndex = 0);
 
 	/** Setup CollisionQueryParams for the AOE */
 	static void InitCollisionParams(const FTargetingRequestHandle& TargetingHandle, FCollisionQueryParams& OutParams,

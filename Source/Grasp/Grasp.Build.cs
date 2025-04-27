@@ -26,6 +26,7 @@ public class Grasp : ModuleRules
 			{
 				"CoreUObject",
 				"Engine",
+				"AIModule",
 			}
 			);
 	}

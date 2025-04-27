@@ -4,10 +4,13 @@
 #include "Targeting/GraspTargetSelection.h"
 
 #include "GraspDeveloper.h"
+#include "Components/CapsuleComponent.h"
 #include "TargetingSystem/TargetingSubsystem.h"
 #include "Engine/OverlapResult.h"
 #include "Engine/World.h"
 #include "Components/PrimitiveComponent.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "System/GraspVersioning.h"
 #include "Targeting/GraspTargetingStatics.h"
 
@@ -50,10 +53,24 @@ UGraspTargetSelection::UGraspTargetSelection(const FObjectInitializer& ObjectIni
 
 	LocationSource = EGraspTargetLocationSource::Actor;
 	RotationSource = EGraspTargetRotationSource::Actor;
+	FallbackRotationSources.Add(EGraspTargetRotationSource::Actor);
 
-	HalfExtent = FVector(1000.f, 750.f, 250.f);
-	HalfHeight = 500.f;
-	Radius = 300.f;
+	MovementSelectionMode = EGraspMovementSelectionMode::Disabled;
+	MovementSelectionAccelBias = 0.2f;  // Primarily from velocity
+
+	ShapeType = EGraspTargetingShape::Capsule;
+	
+	HalfExtent = FVector(500.f, 380.f, 120.f);
+	MaxHalfExtent = HalfExtent * 2.f;
+	HalfHeight = 200.f;
+	Radius = 200.f;
+	MaxHalfHeight = 600.f;
+	MaxRadius = 500.f;
+
+	RadiusScalar = 12.f;
+	MaxRadiusScalar = RadiusScalar.GetValue() * 2.f;
+	HalfHeightScalar = 1.f;
+	MaxHalfHeightScalar = 1.f;
 
 	GraspAbilityRadius = 0.f;
 	UpdateGraspAbilityRadius();
@@ -75,7 +92,9 @@ FVector UGraspTargetSelection::GetSourceOffset_Implementation(
 FQuat UGraspTargetSelection::GetSourceRotation_Implementation(
 	const FTargetingRequestHandle& TargetingHandle) const
 {
-	return UGraspTargetingStatics::GetSourceRotation(TargetingHandle, RotationSource);
+	const bool bUseFallback = RotationSource == EGraspTargetRotationSource::Velocity || RotationSource==EGraspTargetRotationSource::Acceleration;
+	const TArray<EGraspTargetRotationSource> Fallbacks = bUseFallback ? FallbackRotationSources : TArray<EGraspTargetRotationSource>();
+	return UGraspTargetingStatics::GetSourceRotation(TargetingHandle, RotationSource, Fallbacks);
 }
 
 FQuat UGraspTargetSelection::GetSourceRotationOffset_Implementation(
@@ -91,13 +110,16 @@ void UGraspTargetSelection::UpdateGraspAbilityRadius()
 	{
 	case EGraspTargetingShape::Box:
 	case EGraspTargetingShape::Cylinder:
-		GraspAbilityRadius = 0.5f * (HalfExtent.X + HalfExtent.Y);  // Ignore Z (height)
+		GraspAbilityRadius = 0.5f * (GetMaxHalfExtent().X + GetMaxHalfExtent().Y);  // Ignore Z (height)
 		break;
 	case EGraspTargetingShape::Sphere:
-		GraspAbilityRadius = Radius.GetValue();
+		GraspAbilityRadius = GetMaxRadius();
 		break;
 	case EGraspTargetingShape::Capsule:
-		GraspAbilityRadius = 0.5f * (Radius.GetValue() + HalfHeight.GetValue());
+		GraspAbilityRadius = 0.5f * (GetMaxRadius() + GetMaxHalfHeight());
+		break;
+	case EGraspTargetingShape::CharacterCapsule:
+		GraspAbilityRadius = 0.5f * ((GetMaxRadius() * GetMaxRadiusScalar()) + (GetMaxHalfHeight() * GetMaxHalfHeightScalar()));
 		break;
 	}
 }
@@ -132,6 +154,99 @@ void UGraspTargetSelection::PostEditChangeProperty(struct FPropertyChangedEvent&
 }
 #endif
 
+APawn* UGraspTargetSelection::GetPawnFromTargetingHandle(const FTargetingRequestHandle& TargetingHandle)
+{ 
+	if (TargetingHandle.IsValid())
+	{
+		if (const FTargetingSourceContext* SourceContext = FTargetingSourceContext::Find(TargetingHandle))
+		{
+			if (SourceContext->SourceActor)
+			{
+				if (const APawn* Pawn = Cast<APawn>(SourceContext->SourceActor))
+				{
+					return const_cast<APawn*>(Pawn);
+				}
+			}
+		}
+	}
+	return nullptr;
+}
+
+bool UGraspTargetSelection::GetPawnCapsuleSize(const FTargetingRequestHandle& TargetingHandle,
+	float& OutRadius, float& OutHalfHeight) const
+{
+	const APawn* Pawn = GetPawnFromTargetingHandle(TargetingHandle);
+	if (!Pawn)
+	{
+		return false;
+	}
+	
+	if (const ACharacter* Character = Cast<ACharacter>(Pawn))
+	{
+		if (const UCapsuleComponent* Capsule = Character->GetCapsuleComponent())
+		{
+			OutHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
+			OutRadius = Capsule->GetScaledCapsuleRadius();
+			return true;
+		}
+	}
+	return false;
+}
+
+float UGraspTargetSelection::GetPawnMovementAlpha(const FTargetingRequestHandle& TargetingHandle) const
+{
+	if (MovementSelectionMode == EGraspMovementSelectionMode::Disabled)
+	{
+		return 0.f;
+	}
+	
+	const APawn* Pawn = GetPawnFromTargetingHandle(TargetingHandle);
+	if (!Pawn)
+	{
+		return 0.f;
+	}
+	
+	if (const ACharacter* Character = Cast<ACharacter>(Pawn))
+	{
+		if (const UCharacterMovementComponent* Movement = Character->GetCharacterMovement())
+		{
+			switch (MovementSelectionMode)
+			{
+			case EGraspMovementSelectionMode::Disabled:
+				break;
+			case EGraspMovementSelectionMode::Velocity:
+				{
+					const float Velocity = Movement->IsMovingOnGround() ? Movement->Velocity.Size() : Movement->Velocity.Size2D();
+					const float MaxSpeed = Movement->GetMaxSpeed();
+					return FMath::Clamp(Velocity / MaxSpeed, 0.f, 1.f);
+				}
+			case EGraspMovementSelectionMode::Acceleration:
+				{
+					const float Accel = Movement->GetCurrentAcceleration().Size2D();
+					const float MaxAccel = Movement->GetMaxAcceleration();
+					return FMath::Clamp(Accel / MaxAccel, 0.f, 1.f);
+				}
+			case EGraspMovementSelectionMode::VelocityAndAcceleration:
+				{
+					const float Velocity = Movement->IsMovingOnGround() ? Movement->Velocity.Size() : Movement->Velocity.Size2D();
+					const float Accel = Movement->GetCurrentAcceleration().Size2D();
+					
+					const float MaxSpeed = Movement->GetMaxSpeed();
+					const float MaxAccel = Movement->GetMaxAcceleration();
+					
+					const float AccelBias = FMath::Clamp(Accel / MaxAccel, 0.f, 1.f);
+					const float VelBias = FMath::Clamp(Velocity / MaxSpeed, 0.f, 1.f);
+					
+					const float MovementSelectionVelBias = 1.f - MovementSelectionAccelBias;
+					const float Alpha = 0.5f * ((AccelBias * MovementSelectionAccelBias) + (VelBias * MovementSelectionVelBias));
+					return FMath::Clamp<float>(Alpha, 0.f, 1.f);
+				}
+			}
+		}
+	}
+	return 0.f;
+}
+
 void UGraspTargetSelection::Execute(const FTargetingRequestHandle& TargetingHandle) const
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspTargetSelection::Execute);
@@ -165,7 +280,7 @@ void UGraspTargetSelection::ExecuteImmediateTrace(const FTargetingRequestHandle&
 		const FQuat SourceRotation = (GetSourceRotation(TargetingHandle) * GetSourceRotationOffset(TargetingHandle)).GetNormalized();
 
 		TArray<FOverlapResult> OverlapResults;
-		const FCollisionShape CollisionShape = GetCollisionShape();
+		const FCollisionShape CollisionShape = GetCollisionShape(TargetingHandle);
 		FCollisionQueryParams OverlapParams(TEXT("UGraspTargetSelection_AOE"), SCENE_QUERY_STAT_ONLY(UGraspTargetSelection_AOE), false);
 		InitCollisionParams(TargetingHandle, OverlapParams);
 
@@ -213,7 +328,7 @@ void UGraspTargetSelection::ExecuteAsyncTrace(const FTargetingRequestHandle& Tar
 		const FVector SourceLocation = GetSourceLocation(TargetingHandle) + GetSourceOffset(TargetingHandle);
 		const FQuat SourceRotation = (GetSourceRotation(TargetingHandle) * GetSourceRotationOffset(TargetingHandle)).GetNormalized();
 
-		const FCollisionShape CollisionShape = GetCollisionShape();
+		const FCollisionShape CollisionShape = GetCollisionShape(TargetingHandle);
 		FCollisionQueryParams OverlapParams(TEXT("UGraspTargetSelection_AOE"), SCENE_QUERY_STAT_ONLY(UGraspTargetSelection_AOE_Shape), false);
 		InitCollisionParams(TargetingHandle, OverlapParams);
 
@@ -345,17 +460,50 @@ int32 UGraspTargetSelection::ProcessOverlapResults(const FTargetingRequestHandle
 	return NumValidResults;
 }
 
-FCollisionShape UGraspTargetSelection::GetCollisionShape() const
+FCollisionShape UGraspTargetSelection::GetCollisionShape(const FTargetingRequestHandle& TargetingHandle) const
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspTargetSelection::GetCollisionShape);
 	
 	switch (ShapeType)
 	{
-	case EGraspTargetingShape::Box:	return FCollisionShape::MakeBox(HalfExtent);
-	case EGraspTargetingShape::Cylinder: return FCollisionShape::MakeBox(HalfExtent);
-	case EGraspTargetingShape::Sphere: return FCollisionShape::MakeSphere(Radius.GetValue());
+	case EGraspTargetingShape::Box:
+		{
+			const FVector E = FMath::Lerp<FVector>(HalfExtent, MaxHalfExtent, GetPawnMovementAlpha(TargetingHandle));
+			return FCollisionShape::MakeBox(E);
+		}
+	case EGraspTargetingShape::Cylinder:
+		{
+			const FVector E = FMath::Lerp<FVector>(HalfExtent, MaxHalfExtent, GetPawnMovementAlpha(TargetingHandle));
+			return FCollisionShape::MakeBox(E);
+		}
+	case EGraspTargetingShape::Sphere:
+		{
+			const float R = FMath::Lerp<float>(Radius.GetValue(), MaxRadius.GetValue(), GetPawnMovementAlpha(TargetingHandle));
+			return FCollisionShape::MakeSphere(R);
+		}
 	case EGraspTargetingShape::Capsule:
-		return FCollisionShape::MakeCapsule(Radius.GetValue(), HalfHeight.GetValue());
+		{
+			const float R = FMath::Lerp<float>(Radius.GetValue(), MaxRadius.GetValue(), GetPawnMovementAlpha(TargetingHandle));
+			const float H = FMath::Lerp<float>(HalfHeight.GetValue(), MaxHalfHeight.GetValue(), GetPawnMovementAlpha(TargetingHandle));
+			return FCollisionShape::MakeCapsule(R, H);
+		}
+	case EGraspTargetingShape::CharacterCapsule:
+		{
+			float CapsuleRadius = 0.f;
+			float CapsuleHalfHeight = 0.f;
+			if (GetPawnCapsuleSize(TargetingHandle, CapsuleRadius, CapsuleHalfHeight))
+			{
+				const float R = FMath::Lerp<float>(RadiusScalar.GetValue(), MaxRadiusScalar.GetValue(), GetPawnMovementAlpha(TargetingHandle));
+				const float H = FMath::Lerp<float>(HalfHeightScalar.GetValue(), MaxHalfHeightScalar.GetValue(), GetPawnMovementAlpha(TargetingHandle));
+				return FCollisionShape::MakeCapsule(CapsuleRadius * R, CapsuleHalfHeight * H);
+			}
+			else
+			{
+				const float R = FMath::Lerp<float>(Radius.GetValue(), MaxRadius.GetValue(), GetPawnMovementAlpha(TargetingHandle));
+				const float H = FMath::Lerp<float>(HalfHeight.GetValue(), MaxHalfHeight.GetValue(), GetPawnMovementAlpha(TargetingHandle));
+				return FCollisionShape::MakeCapsule(R, H);
+			}
+		}
 	default: return {};
 	}
 }
@@ -374,7 +522,7 @@ void UGraspTargetSelection::DebugDrawBoundingVolume(const FTargetingRequestHandl
 	const UWorld* World = GetSourceContextWorld(TargetingHandle);
 	const FVector SourceLocation = OverlapDatum ? OverlapDatum->Pos : GetSourceLocation(TargetingHandle) + GetSourceOffset(TargetingHandle);
 	const FQuat SourceRotation = OverlapDatum ? OverlapDatum->Rot : (GetSourceRotation(TargetingHandle) * GetSourceRotationOffset(TargetingHandle)).GetNormalized();
-	const FCollisionShape CollisionShape = GetCollisionShape();
+	const FCollisionShape CollisionShape = GetCollisionShape(TargetingHandle);
 
 	constexpr bool bPersistentLines = false;
 #if UE_5_04_OR_LATER
@@ -396,6 +544,7 @@ void UGraspTargetSelection::DebugDrawBoundingVolume(const FTargetingRequestHandl
 			Color, bPersistentLines, LifeTime, DepthPriority, Thickness);
 		break;
 	case EGraspTargetingShape::Capsule:
+	case EGraspTargetingShape::CharacterCapsule:
 		DrawDebugCapsule(World, SourceLocation, CollisionShape.GetCapsuleHalfHeight(), CollisionShape.GetCapsuleRadius(), SourceRotation,
 			Color, bPersistentLines, LifeTime, DepthPriority, Thickness);
 		break;

@@ -37,6 +37,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Grasp Selection")
 	EGraspTargetRotationSource RotationSource;
 
+	/** Fallback Rotation to trace from if RotationSource could not get a valid direction (e.g. velocity, but we have no velocity) */
+	UPROPERTY(EditAnywhere, Category="Grasp Selection", meta=(EditCondition="RotationSource==EGraspTargetRotationSource::Velocity||RotationSource==EGraspTargetRotationSource::Acceleration", EditConditionHides))
+	TArray<EGraspTargetRotationSource> FallbackRotationSources;
+
 	/** The default source location offset used by GetSourceOffset */
 	UPROPERTY(EditAnywhere, Category="Grasp Selection")
 	FVector DefaultSourceLocationOffset = FVector::ZeroVector;
@@ -68,10 +72,30 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Grasp Selection Shape")
 	EGraspTargetingShape ShapeType;
 
+	/**
+	 * Modify the shape based on our character movement properties
+	 * To support Pawns you will need to subclass this and override GetPawnMovementScalar()
+	 */
+	UPROPERTY(EditAnywhere, Category="Grasp Selection Shape")
+	EGraspMovementSelectionMode MovementSelectionMode;
+
+	/**
+	 * Change the bias between acceleration and velocity
+	 * At 1.0 the shape will be based on the acceleration of the character
+	 * At 0.0 the shape will be based on the velocity of the character
+	 * At 0.5 the shape will be based on the average of the two
+	 */
+	UPROPERTY(EditAnywhere, Category="Grasp Selection Shape", meta=(UIMin="0", ClampMin="0", UIMax="1", ClampMax="1", Delta="0.05", ForceUnits="Percent", EditCondition="MovementSelectionMode!=EGraspMovementSelectionMode::Disabled", EditConditionHides))
+	float MovementSelectionAccelBias;
+	
 	/** The half extent to use for box and cylinder */
 	UPROPERTY(EditAnywhere, Category="Grasp Selection Shape", meta=(EditCondition="ShapeType==EGraspTargetingShape::Box||ShapeType==EGraspTargetingShape::Cylinder", EditConditionHides))
 	FVector HalfExtent;
-
+	
+	/** The maximum half extent to use for box and cylinder from MovementSelectionMode */
+	UPROPERTY(EditAnywhere, Category="Grasp Selection Shape", meta=(EditCondition="MovementSelectionMode!=EGraspMovementSelectionMode::Disabled&&(ShapeType==EGraspTargetingShape::Box||ShapeType==EGraspTargetingShape::Cylinder)", EditConditionHides))
+	FVector MaxHalfExtent;
+	
 	/** The radius to use for sphere and capsule overlaps */
 	UPROPERTY(EditAnywhere, Category="Grasp Selection Shape", meta=(EditCondition="ShapeType==EGraspTargetingShape::Sphere||ShapeType==EGraspTargetingShape::Capsule", EditConditionHides))
 	FScalableFloat Radius;
@@ -80,6 +104,36 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Grasp Selection Shape", meta=(EditCondition="ShapeType==EGraspTargetingShape::Capsule", EditConditionHides))
 	FScalableFloat HalfHeight;
 
+	/** The radius to use for sphere and capsule overlaps */
+	UPROPERTY(EditAnywhere, Category="Grasp Selection Shape", meta=(EditCondition="MovementSelectionMode!=EGraspMovementSelectionMode::Disabled&&(ShapeType==EGraspTargetingShape::Sphere||ShapeType==EGraspTargetingShape::Capsule)", EditConditionHides))
+	FScalableFloat MaxRadius;
+
+	/** The half height to use for capsule overlap checks */
+	UPROPERTY(EditAnywhere, Category="Grasp Selection Shape", meta=(EditCondition="MovementSelectionMode!=EGraspMovementSelectionMode::Disabled&&(ShapeType==EGraspTargetingShape::Capsule)", EditConditionHides))
+	FScalableFloat MaxHalfHeight;
+	
+	/** The radius to use for sphere and capsule overlaps */
+	UPROPERTY(EditAnywhere, Category="Grasp Selection Shape", meta=(ForceUnits="x", EditCondition="ShapeType==EGraspTargetingShape::CharacterCapsule", EditConditionHides))
+	FScalableFloat RadiusScalar;
+
+	/** The half height to use for capsule overlap checks */
+	UPROPERTY(EditAnywhere, Category="Grasp Selection Shape", meta=(ForceUnits="x", EditCondition="ShapeType==EGraspTargetingShape::CharacterCapsule", EditConditionHides))
+	FScalableFloat HalfHeightScalar;
+
+	/** The radius to use for sphere and capsule overlaps */
+	UPROPERTY(EditAnywhere, Category="Grasp Selection Shape", meta=(ForceUnits="x", EditCondition="MovementSelectionMode!=EGraspMovementSelectionMode::Disabled&&(ShapeType==EGraspTargetingShape::CharacterCapsule)", EditConditionHides))
+	FScalableFloat MaxRadiusScalar;
+
+	/** The half height to use for capsule overlap checks */
+	UPROPERTY(EditAnywhere, Category="Grasp Selection Shape", meta=(ForceUnits="x", EditCondition="MovementSelectionMode!=EGraspMovementSelectionMode::Disabled&&(ShapeType==EGraspTargetingShape::CharacterCapsule)", EditConditionHides))
+	FScalableFloat MaxHalfHeightScalar;
+
+	float GetMaxRadius() const { return MovementSelectionMode != EGraspMovementSelectionMode::Disabled ? MaxRadius.GetValue() : Radius.GetValue(); }
+	float GetMaxHalfHeight() const { return MovementSelectionMode != EGraspMovementSelectionMode::Disabled ? MaxHalfHeight.GetValue() : HalfHeight.GetValue(); }
+	float GetMaxRadiusScalar() const { return MovementSelectionMode != EGraspMovementSelectionMode::Disabled ? MaxRadiusScalar.GetValue() : RadiusScalar.GetValue(); }
+	float GetMaxHalfHeightScalar() const { return MovementSelectionMode != EGraspMovementSelectionMode::Disabled ? MaxHalfHeightScalar.GetValue() : HalfHeightScalar.GetValue(); }
+	FVector GetMaxHalfExtent() const { return MovementSelectionMode != EGraspMovementSelectionMode::Disabled ? MaxHalfExtent : HalfExtent; }
+	
 	/**
 	 * Radius used by Grasp for granting abilities
 	 * Calculated based on the shape dimensions
@@ -116,6 +170,10 @@ public:
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
+
+	static APawn* GetPawnFromTargetingHandle(const FTargetingRequestHandle& TargetingHandle);
+	virtual bool GetPawnCapsuleSize(const FTargetingRequestHandle& TargetingHandle, float& OutRadius, float& OutHalfHeight) const;
+	virtual float GetPawnMovementAlpha(const FTargetingRequestHandle& TargetingHandle) const;
 	
 	/** Evaluation function called by derived classes to process the targeting request */
 	virtual void Execute(const FTargetingRequestHandle& TargetingHandle) const override;
@@ -139,7 +197,7 @@ protected:
 	
 protected:
 	/** Helper method to build the Collision Shape */
-	FCollisionShape GetCollisionShape() const;
+	FCollisionShape GetCollisionShape(const FTargetingRequestHandle& TargetingHandle) const;
 	
 	/** Setup CollisionQueryParams for the AOE */
 	void InitCollisionParams(const FTargetingRequestHandle& TargetingHandle, FCollisionQueryParams& OutParams) const;

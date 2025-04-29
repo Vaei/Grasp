@@ -4,7 +4,7 @@
 #include "GraspComponent.h"
 
 #include "AbilitySystemComponent.h"
-#include "Graspable.h"
+#include "GraspableComponent.h"
 #include "GraspData.h"
 #include "TargetingSystem/TargetingSubsystem.h"
 #include "GameFramework/Controller.h"
@@ -273,7 +273,7 @@ void UGraspComponent::GraspTargetsReady(const TArray<FGraspScanResult>& Results)
 	{
 		// We have already filtered for these
 		const UPrimitiveComponent* Component = Result.Graspable.IsValid() ? Result.Graspable.Get() : nullptr;
-		const IGraspable* Graspable = CastChecked<IGraspable>(Component);
+		const IGraspableComponent* Graspable = CastChecked<IGraspableComponent>(Component);
 
 		// No ability to grant
 		const TSubclassOf<UGameplayAbility>& Ability = GetGraspAbility(Graspable->GetGraspData());
@@ -372,7 +372,7 @@ void UGraspComponent::GraspTargetsReady(const TArray<FGraspScanResult>& Results)
 		{
 			continue;
 		}
-		const IGraspable* Graspable = CastChecked<IGraspable>(Component);
+		const IGraspableComponent* Graspable = CastChecked<IGraspableComponent>(Component);
 
 		// No data to retrieve ability from
 		if (!Graspable->GetGraspData())

@@ -9,7 +9,7 @@
 
 class UAbilitySystemComponent;
 struct FGameplayAbilitySpec;
-class IGraspable;
+class IGraspableComponent;
 class UGameplayAbility;
 class UGraspData;
 class UGraspComponent;

@@ -6,7 +6,7 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "Engine/Engine.h"
-#include "Graspable.h"
+#include "GraspableComponent.h"
 #include "GraspComponent.h"
 #include "GraspData.h"
 #include "GameFramework/PlayerState.h"
@@ -21,37 +21,62 @@
 #include "DrawDebugHelpers.h"
 #endif
 
+#include "GraspableOwner.h"
+
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GraspStatics)
 
 
 FGameplayAbilitySpec* UGraspStatics::FindGraspAbilitySpec(const UAbilitySystemComponent* ASC,
 	const UPrimitiveComponent* GraspableComponent)
 {
-	const IGraspable* Graspable = GraspableComponent ? CastChecked<IGraspable>(GraspableComponent) : nullptr;
+	const IGraspableComponent* Graspable = GraspableComponent ? CastChecked<IGraspableComponent>(GraspableComponent) : nullptr;
 	const TSubclassOf<UGameplayAbility>& GraspAbility = Graspable->GetGraspData()->GraspAbility;
 	return ASC->FindAbilitySpecFromClass(GraspAbility);
 }
 
 bool UGraspStatics::PrepareGraspAbilityDataPayload(const UPrimitiveComponent* GraspableComponent,
-	FGameplayEventData& Payload, EGraspAbilityComponentSource Source)
+	FGameplayEventData& Payload, const AActor* SourceActor, const FGameplayAbilityActorInfo* ActorInfo,
+	EGraspAbilityComponentSource Source)
 {
 	Payload = {};
+
+	// User might handle this in a custom way
 	if (Source == EGraspAbilityComponentSource::Custom)
 	{
 		return false;
 	}
-	
-	const IGraspable* Graspable = GraspableComponent ? CastChecked<IGraspable>(GraspableComponent) : nullptr;
-	const TArray<FGameplayAbilityTargetData*> OptionalTargetData = Graspable->GatherOptionalGraspTargetData();
+
+	// We would have filtered if the type was invalid
+	const IGraspableComponent* Graspable = GraspableComponent ? CastChecked<IGraspableComponent>(GraspableComponent) : nullptr;
+
+	// Gather target data
+	TArray<FGameplayAbilityTargetData*> OptionalTargetData = Graspable->GatherOptionalGraspTargetData(ActorInfo);
+
+	// Gather from owner, if implemented
+	if (const IGraspableOwner* GraspableOwner = Cast<IGraspableOwner>(GraspableComponent->GetOwner()))
+	{
+		const TArray<FGameplayAbilityTargetData*> OwnerTargetData = GraspableOwner->GatherOptionalGraspTargetData(ActorInfo);
+		if (OwnerTargetData.Num() > 0)
+		{
+			OptionalTargetData.Append(OwnerTargetData);
+		}
+	}
+
+	// We may only want to send the target data if we have it
 	if (OptionalTargetData.Num() == 0 && Source == EGraspAbilityComponentSource::Automatic)
 	{
 		return false;
 	}
+
+	// Send the component along with the event data
 	Payload.OptionalObject = GraspableComponent;
+
+	// Send the target data along with the event data
 	for (FGameplayAbilityTargetData* TargetData : OptionalTargetData)
 	{
 		Payload.TargetData.Add(TargetData);
 	}
+
 	return true;
 }
 
@@ -64,7 +89,7 @@ bool UGraspStatics::CanGraspActivateAbility(const AActor* SourceActor, const UPr
 	}
 
 	// Is this a graspable component?
-	if (!GraspableComponent->Implements<UGraspable>())
+	if (!GraspableComponent->Implements<UGraspableComponent>())
 	{
 		UE_LOG(LogGrasp, Error, TEXT("CanGraspActivateAbility: Attempting to interact with an invalid component: %s belonging to %s"),
 			*GetNameSafe(GraspableComponent), *GetNameSafe(SourceActor));
@@ -106,9 +131,9 @@ bool UGraspStatics::CanGraspActivateAbility(const AActor* SourceActor, const UPr
 	if (Spec->Ability->CanActivateAbility(Spec->Handle, ActorInfo, nullptr, nullptr, &RelevantTags))
 	{
 		FGameplayEventData Payload;
-		if (PrepareGraspAbilityDataPayload(GraspableComponent, Payload, Source))
+		if (PrepareGraspAbilityDataPayload(GraspableComponent, Payload, SourceActor, ActorInfo, Source))
 		{
-			return Spec->Ability->ShouldAbilityRespondToEvent(ASC->AbilityActorInfo.Get(), &Payload);
+			return Spec->Ability->ShouldAbilityRespondToEvent(ActorInfo, &Payload);
 		}
 		return true;
 	}
@@ -133,7 +158,7 @@ bool UGraspStatics::TryActivateGraspAbility(const AActor* SourceActor, UPrimitiv
 	}
 
 	// Get the target component from the target data -- we have already thoroughly validated this elsewhere
-	const IGraspable* Graspable = GraspableComponent ? CastChecked<IGraspable>(GraspableComponent) : nullptr;
+	const IGraspableComponent* Graspable = GraspableComponent ? CastChecked<IGraspableComponent>(GraspableComponent) : nullptr;
 
 	// Retrieve the ability spec
 	FGameplayAbilitySpec* Spec = FindGraspAbilitySpec(ASC, GraspableComponent);
@@ -146,13 +171,13 @@ bool UGraspStatics::TryActivateGraspAbility(const AActor* SourceActor, UPrimitiv
 	GraspComponent->PreTryActivateGraspAbility(SourceActor, GraspableComponent, Source, Spec);
 	
 	// Optional target data
-	const TArray<FGameplayAbilityTargetData*> OptionalTargetData = Graspable->GatherOptionalGraspTargetData();
+	FGameplayAbilityActorInfo* ActorInfo = ASC->AbilityActorInfo.Get();
+	const TArray<FGameplayAbilityTargetData*> OptionalTargetData = Graspable->GatherOptionalGraspTargetData(ActorInfo);
 	FGameplayEventData Payload;
 
 	// Prepare the payload
-	if (PrepareGraspAbilityDataPayload(GraspableComponent, Payload, Source))
+	if (PrepareGraspAbilityDataPayload(GraspableComponent, Payload, SourceActor, ActorInfo, Source))
 	{
-		FGameplayAbilityActorInfo* ActorInfo = ASC->AbilityActorInfo.Get();
 		if (ASC->TriggerAbilityFromGameplayEvent(Spec->Handle, ActorInfo,
 			FGraspTags::Grasp_Interact_Activate, &Payload, *ASC))
 		{
@@ -743,7 +768,7 @@ EGraspQueryResult UGraspStatics::CanInteractWith(const AActor* Interactor, const
 	}
 
 	// Validate the grasp data
-	const IGraspable* Graspable = CastChecked<IGraspable>(Component);
+	const IGraspableComponent* Graspable = CastChecked<IGraspableComponent>(Component);
 	if (!ensure(Graspable->GetGraspData() != nullptr))
 	{
 		return EGraspQueryResult::None;

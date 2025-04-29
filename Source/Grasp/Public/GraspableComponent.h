@@ -4,13 +4,14 @@
 
 #include "CoreMinimal.h"
 
-#include "Graspable.generated.h"
+#include "GraspableComponent.generated.h"
 
+struct FGameplayAbilityActorInfo;
 struct FGameplayAbilityTargetData;
 class UGraspData;
 
 UINTERFACE()
-class GRASP_API UGraspable : public UInterface
+class GRASP_API UGraspableComponent : public UInterface
 {
 	GENERATED_BODY()
 };
@@ -20,7 +21,7 @@ class GRASP_API UGraspable : public UInterface
  * This isn't intended for use outside the Grasp plugin
  * Implementation is assumed and never tested
  */
-class GRASP_API IGraspable
+class GRASP_API IGraspableComponent
 {
 	GENERATED_BODY()
 
@@ -38,7 +39,7 @@ public:
 	 * Optional additional target data that will be passed to the ability when the graspable is interacted with.
 	 * @return The optional target data for this graspable.
 	 */
-	virtual TArray<FGameplayAbilityTargetData*> GatherOptionalGraspTargetData() const
+	virtual TArray<FGameplayAbilityTargetData*> GatherOptionalGraspTargetData(const FGameplayAbilityActorInfo* ActorInfo) const
 	{
 		return {};
 	}

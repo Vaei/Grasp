@@ -3,7 +3,8 @@
 
 #include "Filtering/GraspFilter_Graspable.h"
 
-#include "Graspable.h"
+#include "GraspableComponent.h"
+#include "GraspableOwner.h"
 #include "GraspData.h"
 #include "Abilities/GameplayAbility.h"
 
@@ -34,7 +35,7 @@ bool UGraspFilter_Graspable::ShouldFilterTarget(const FTargetingRequestHandle& T
 	}
 
 	const UPrimitiveComponent* TargetComponent = TargetData.HitResult.GetComponent();
-	const IGraspable* Graspable = TargetComponent ? CastChecked<IGraspable>(TargetComponent) : nullptr;
+	const IGraspableComponent* Graspable = TargetComponent ? CastChecked<IGraspableComponent>(TargetComponent) : nullptr;
 	
 	// Check if graspable is valid
 	if (!Graspable)
@@ -57,6 +58,12 @@ bool UGraspFilter_Graspable::ShouldFilterTarget(const FTargetingRequestHandle& T
 
 	// Check if the target is dead
 	if (Graspable->IsGraspableDead())
+	{
+		return true;
+	}
+
+	// If implementing owner interface, check again
+	if (TargetActor->Implements<UGraspableOwner>() && IGraspableOwner::Execute_IsGraspableDead(TargetActor))
 	{
 		return true;
 	}

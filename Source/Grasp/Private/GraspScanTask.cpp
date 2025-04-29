@@ -18,7 +18,7 @@
 #include "Logging/MessageLog.h"
 #endif
 
-#include "Graspable.h"
+#include "GraspableComponent.h"
 #include "GraspData.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GraspScanTask)
@@ -395,7 +395,7 @@ void UGraspScanTask::OnGraspComplete(FTargetingRequestHandle TargetingHandle, FG
 					continue;
 				}
 
-				const IGraspable* Graspable = CastChecked<IGraspable>(Hit.GetComponent());  // Filtering already checked the type and data
+				const IGraspableComponent* Graspable = CastChecked<IGraspableComponent>(Hit.GetComponent());  // Filtering already checked the type and data
 				const FVector Location = Hit.GetComponent()->GetComponentLocation();
 
 				// Calculate the normalized distance

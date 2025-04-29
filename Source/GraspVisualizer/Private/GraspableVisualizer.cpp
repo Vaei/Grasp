@@ -3,14 +3,30 @@
 
 #include "GraspableVisualizer.h"
 
-#include "Graspable.h"
+#include "GraspableComponent.h"
 #include "GraspData.h"
 #include "Materials/MaterialRenderProxy.h"
+
+
+namespace GraspCVars
+{
+	static bool bShouldVisualizeGrasp = true;
+	static FAutoConsoleVariableRef CVarShouldVisualizeGrasp(
+		TEXT("p.Grasp.Visualize"),
+		bShouldVisualizeGrasp,
+		TEXT("If true will draw visuals for Graspable/GraspData to visualize angle, distance, height, etc."),
+		ECVF_Default);
+}
 
 
 void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent, const FSceneView* View,
 	FPrimitiveDrawInterface* PDI)
 {
+	if (!GraspCVars::bShouldVisualizeGrasp)
+	{
+		return;
+	}
+	
 	const UPrimitiveComponent* Component = InComponent ? Cast<const UPrimitiveComponent>(InComponent) : nullptr;
 	if (!Component || !IsValid(Component->GetOwner()))
 	{
@@ -36,7 +52,7 @@ void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent,
 	const FVector& Up = Transform.GetUnitAxis(EAxis::Z);
 	const float Radius = Component->Bounds.SphereRadius * 1.2f;
 
-	const IGraspable* Graspable = CastChecked<IGraspable>(Component);
+	const IGraspableComponent* Graspable = CastChecked<IGraspableComponent>(Component);
 	const UGraspData* Data = Graspable->GetGraspData();
 
 	const FColor Color = FColor::Green;

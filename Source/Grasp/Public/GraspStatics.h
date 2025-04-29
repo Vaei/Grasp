@@ -8,6 +8,7 @@
 
 #include "GraspStatics.generated.h"
 
+struct FGameplayAbilityActorInfo;
 struct FGameplayEventData;
 class UAbilitySystemComponent;
 class UGraspComponent;
@@ -34,14 +35,12 @@ public:
 	 * 
 	 * @return True if a Payload was prepared, true if IGraspable::GatherOptionalGraspTargetData() returns any target data
 	 */
-	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static bool PrepareGraspAbilityDataPayload(const UPrimitiveComponent* GraspableComponent,
-		FGameplayEventData& Payload, EGraspAbilityComponentSource Source = EGraspAbilityComponentSource::EventData);
+		FGameplayEventData& Payload, const AActor* SourceActor, const FGameplayAbilityActorInfo* ActorInfo,
+		EGraspAbilityComponentSource Source = EGraspAbilityComponentSource::EventData);
 
 	/** 
 	 * Check CanActivateAbility()
-	 * Optionally check ShouldAbilityRespondToEvent() if we have valid target data and bCheckTargetData is true
-	 * bCheckTargetData will be ignored unless UGraspDeveloper::AbilityActivationHandling is set to Full
 	 * @return True if the ability can be activated
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)

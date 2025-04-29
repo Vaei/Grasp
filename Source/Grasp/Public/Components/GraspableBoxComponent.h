@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Graspable.h"
+#include "GraspableComponent.h"
 #include "Components/BoxComponent.h"
 
 #if WITH_EDITOR
@@ -18,7 +18,7 @@ class UGraspData;
  * It defines a point from which interaction can occur
  */
 UCLASS(Blueprintable, BlueprintType, ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class GRASP_API UGraspableBoxComponent : public UBoxComponent, public IGraspable
+class GRASP_API UGraspableBoxComponent : public UBoxComponent, public IGraspableComponent
 {
 	GENERATED_BODY()
 

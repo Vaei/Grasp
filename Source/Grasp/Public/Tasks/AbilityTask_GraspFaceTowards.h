@@ -24,6 +24,8 @@ public:
 	
 	UAbilityTask_GraspFaceTowards(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+
 	/**
 	 * Apply force to character's movement to rotate towards a target over time
 	 * Bind to OnFinish then call SharedInitAndApply() after creating this task -- otherwise the task will not run
@@ -87,28 +89,28 @@ public:
 	virtual void OnDestroy(bool bInOwnerFinished) override;
 	
 protected:
-	UPROPERTY()
+	UPROPERTY(Replicated)
 	TObjectPtr<const AActor> TargetActor;
 
-	UPROPERTY()
+	UPROPERTY(Replicated)
 	TObjectPtr<const USceneComponent> TargetComponent;
 	
-	UPROPERTY()
+	UPROPERTY(Replicated)
 	FVector WorldLocation;
 	
-	UPROPERTY()
+	UPROPERTY(Replicated)
 	FVector WorldDirection;
 	
-	UPROPERTY()
+	UPROPERTY(Replicated)
 	bool bFace2D;
 	
-	UPROPERTY()
+	UPROPERTY(Replicated)
 	float Duration;
 
-	UPROPERTY()
+	UPROPERTY(Replicated)
 	bool bEnableGravity;
 	
-	UPROPERTY()
+	UPROPERTY(Replicated)
 	bool bStopWhenAbilityEnds;
 	
 	UPROPERTY()

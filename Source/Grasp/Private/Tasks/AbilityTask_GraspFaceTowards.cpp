@@ -7,6 +7,7 @@
 #include "AbilitySystemLog.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/RootMotionSource.h"
+#include "Net/UnrealNetwork.h"
 #include "Tasks/RootMotionSource_GraspFaceTowards.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(AbilityTask_GraspFaceTowards)
@@ -31,6 +32,20 @@ UAbilityTask_GraspFaceTowards::UAbilityTask_GraspFaceTowards(const FObjectInitia
 
 	MovementComponent = nullptr;
 	bIsFinished = false;
+}
+
+void UAbilityTask_GraspFaceTowards::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ThisClass, TargetActor);
+	DOREPLIFETIME(ThisClass, TargetComponent);
+	DOREPLIFETIME(ThisClass, WorldLocation);
+	DOREPLIFETIME(ThisClass, WorldDirection);
+	DOREPLIFETIME(ThisClass, bFace2D);
+	DOREPLIFETIME(ThisClass, Duration);
+	DOREPLIFETIME(ThisClass, bEnableGravity);
+	DOREPLIFETIME(ThisClass, bStopWhenAbilityEnds);
 }
 
 UAbilityTask_GraspFaceTowards* UAbilityTask_GraspFaceTowards::FaceTowards(UGameplayAbility* OwningAbility,

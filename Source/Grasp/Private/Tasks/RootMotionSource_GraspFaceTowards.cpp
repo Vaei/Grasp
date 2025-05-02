@@ -88,7 +88,7 @@ bool FRootMotionSource_GraspFaceTowards::NetSerialize(FArchive& Ar, UPackageMap*
 		return false;
 	}
 
-	Ar << StartDirection; // TODO-RootMotionSource: Quantization
+	Ar << StartDirection;
 	Ar << TargetDirection;
 
 	bOutSuccess = true;

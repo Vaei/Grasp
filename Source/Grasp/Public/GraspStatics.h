@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "GraspTypes.h"
-
 #include "GraspStatics.generated.h"
 
 struct FGameplayAbilityActorInfo;

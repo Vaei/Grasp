@@ -34,6 +34,7 @@ bool UGraspFilter_Graspable::ShouldFilterTarget(const FTargetingRequestHandle& T
 		return true;
 	}
 
+	// Retrieve the target component and interfrace
 	const UPrimitiveComponent* TargetComponent = TargetData.HitResult.GetComponent();
 	const IGraspableComponent* Graspable = TargetComponent ? CastChecked<IGraspableComponent>(TargetComponent) : nullptr;
 	

@@ -29,10 +29,12 @@ bool UGraspFilter_IsWithinGraspableData::ShouldFilterTarget(const FTargetingRequ
 	const TObjectPtr<AActor> SourceActor = SourceContext->SourceActor;
 	const UPrimitiveComponent* TargetComponent = TargetData.HitResult.GetComponent();
 
+	// Query if we can interact with the target based on angle and distance
 	float NormalizedAngleDiff, NormalizedDistance, NormalizedHighlightDistance = 0.f;
 	const EGraspQueryResult Result = UGraspStatics::CanInteractWith(SourceActor, TargetComponent,
 		NormalizedAngleDiff, NormalizedDistance, NormalizedHighlightDistance);
 
+	// Return the result based on the threshold
 	bool bCanInteract;
 	switch (Result)
 	{

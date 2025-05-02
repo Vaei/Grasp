@@ -44,6 +44,7 @@ void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent,
 		return;
 	}
 
+	// Retrieve the transform properties
 	FTransform Transform = Component->GetComponentTransform();
 	Transform.SetRotation(FRotator(0.f, Transform.Rotator().Yaw, 0.f).Quaternion());
 	const FVector& BaseLocation = Component->GetComponentLocation();
@@ -52,13 +53,16 @@ void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent,
 	const FVector& Up = Transform.GetUnitAxis(EAxis::Z);
 	const float Radius = Component->Bounds.SphereRadius * 1.2f;
 
+	// Retrieve the Graspable Interface and Data
 	const IGraspableComponent* Graspable = CastChecked<IGraspableComponent>(Component);
 	const UGraspData* Data = Graspable->GetGraspData();
 
+	// Colors for Drawing
 	const FColor Color = FColor::Green;
 	const FColor RemColor = FColor::Black;
 	const FColor ErrorColor = FColor::Red;
-	
+
+	// If no Data is found draw a red error circle/disc
 	if (!Data)
 	{
 		// Draw outline circle
@@ -69,6 +73,7 @@ void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent,
 		return;
 	}
 
+	// Draw from above the BaseLocation based on the MaxHeightAbove
 	const FVector Location = BaseLocation + Up * Data->MaxHeightAbove;
 
 	// 360 to 180
@@ -78,10 +83,14 @@ void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent,
 	static constexpr int32 MaxSections = 32;
 	const int32 Sections = FMath::Max(MaxSections, FMath::CeilToInt(Angle / 180.f * MaxSections));
 
+	// Draw Outer and Below if applicable
 	const bool bDrawOuter = !FMath::IsNearlyZero(Data->MaxHighlightDistance) && !FMath::IsNearlyEqual(Data->MaxHighlightDistance, Data->MaxGraspDistance);
 	const bool bDrawBelow = !FMath::IsNearlyZero(Data->MaxHeightAbove) || !FMath::IsNearlyZero(Data->MaxHeightBelow);
+
+	// Determine the location below the BaseLocation based on the MaxHeightBelow
 	const FVector LocationBelow = BaseLocation - Up * Data->MaxHeightBelow;
-	
+
+	// Distance based on whether we highlight or not
 	const float Distance = bDrawOuter ? Data->MaxHighlightDistance : Data->MaxGraspDistance;
 	
 	// Inner Arc representing the angle and grasp distance
@@ -92,9 +101,9 @@ void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent,
 		DrawCircle(PDI, LocationBelow, Forward, Right, RemColor, Data->MaxGraspDistance, Sections, SDPG_World);
 	}
 	
+	// Outer Arc representing the angle and highlight distance
 	if (bDrawOuter)
 	{
-		// Outer Arc representing the angle and highlight distance
 		DrawArc(PDI, Location, Forward, Right, -Angle, Angle, Data->MaxHighlightDistance, Sections, Color, SDPG_Foreground);
 		DrawCircle(PDI, Location, Forward, Right, RemColor, Data->MaxHighlightDistance, Sections, SDPG_World, 1.f);
 		if (bDrawBelow)
@@ -103,11 +112,7 @@ void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent,
 		}
 	}
 
-	// Shading
-	// DrawDisc(PDI, Location, Forward, Right, FColor::White, Distance, Sections, Proxy, SDPG_World);
-
-	// Draw above visualizer
-
+	// Draw a circle below the BaseLocation if applicable
 	if (bDrawBelow)
 	{
 		// DrawDisc(PDI, LocationBelow, Forward, Right, FColor::White, Distance, Sections, Proxy, SDPG_World);

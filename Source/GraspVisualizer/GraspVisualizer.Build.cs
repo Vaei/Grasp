@@ -1,4 +1,6 @@
-﻿using UnrealBuildTool;
+﻿// Copyright (c) Jared Taylor
+
+using UnrealBuildTool;
 
 public class GraspVisualizer : ModuleRules
 {

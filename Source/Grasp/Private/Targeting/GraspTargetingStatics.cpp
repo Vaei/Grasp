@@ -13,6 +13,7 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GraspTargetingStatics)
 
+
 FVector UGraspTargetingStatics::GetSourceLocation(const FTargetingRequestHandle& TargetingHandle,
 	EGraspTargetLocationSource LocationSource)
 {

@@ -194,7 +194,7 @@ bool UGraspTargetSelection::GetPawnCapsuleSize(const FTargetingRequestHandle& Ta
 	return false;
 }
 
-float UGraspTargetSelection::GetPawnMovementAlpha(const FTargetingRequestHandle& TargetingHandle) const
+float UGraspTargetSelection::CalcPawnMovementAlpha(const FTargetingRequestHandle& TargetingHandle) const
 {
 	if (MovementSelectionMode == EGraspMovementSelectionMode::Disabled)
 	{
@@ -472,23 +472,23 @@ FCollisionShape UGraspTargetSelection::GetCollisionShape(const FTargetingRequest
 	{
 	case EGraspTargetingShape::Box:
 		{
-			const FVector E = FMath::Lerp<FVector>(HalfExtent, MaxHalfExtent, GetPawnMovementAlpha(TargetingHandle));
+			const FVector E = FMath::Lerp<FVector>(HalfExtent, MaxHalfExtent, CalcPawnMovementAlpha(TargetingHandle));
 			return FCollisionShape::MakeBox(E);
 		}
 	case EGraspTargetingShape::Cylinder:
 		{
-			const FVector E = FMath::Lerp<FVector>(HalfExtent, MaxHalfExtent, GetPawnMovementAlpha(TargetingHandle));
+			const FVector E = FMath::Lerp<FVector>(HalfExtent, MaxHalfExtent, CalcPawnMovementAlpha(TargetingHandle));
 			return FCollisionShape::MakeBox(E);
 		}
 	case EGraspTargetingShape::Sphere:
 		{
-			const float R = FMath::Lerp<float>(Radius.GetValue(), MaxRadius.GetValue(), GetPawnMovementAlpha(TargetingHandle));
+			const float R = FMath::Lerp<float>(Radius.GetValue(), MaxRadius.GetValue(), CalcPawnMovementAlpha(TargetingHandle));
 			return FCollisionShape::MakeSphere(R);
 		}
 	case EGraspTargetingShape::Capsule:
 		{
-			const float R = FMath::Lerp<float>(Radius.GetValue(), MaxRadius.GetValue(), GetPawnMovementAlpha(TargetingHandle));
-			const float H = FMath::Lerp<float>(HalfHeight.GetValue(), MaxHalfHeight.GetValue(), GetPawnMovementAlpha(TargetingHandle));
+			const float R = FMath::Lerp<float>(Radius.GetValue(), MaxRadius.GetValue(), CalcPawnMovementAlpha(TargetingHandle));
+			const float H = FMath::Lerp<float>(HalfHeight.GetValue(), MaxHalfHeight.GetValue(), CalcPawnMovementAlpha(TargetingHandle));
 			return FCollisionShape::MakeCapsule(R, H);
 		}
 	case EGraspTargetingShape::CharacterCapsule:
@@ -497,14 +497,14 @@ FCollisionShape UGraspTargetSelection::GetCollisionShape(const FTargetingRequest
 			float CapsuleHalfHeight = 0.f;
 			if (GetPawnCapsuleSize(TargetingHandle, CapsuleRadius, CapsuleHalfHeight))
 			{
-				const float R = FMath::Lerp<float>(RadiusScalar.GetValue(), MaxRadiusScalar.GetValue(), GetPawnMovementAlpha(TargetingHandle));
-				const float H = FMath::Lerp<float>(HalfHeightScalar.GetValue(), MaxHalfHeightScalar.GetValue(), GetPawnMovementAlpha(TargetingHandle));
+				const float R = FMath::Lerp<float>(RadiusScalar.GetValue(), MaxRadiusScalar.GetValue(), CalcPawnMovementAlpha(TargetingHandle));
+				const float H = FMath::Lerp<float>(HalfHeightScalar.GetValue(), MaxHalfHeightScalar.GetValue(), CalcPawnMovementAlpha(TargetingHandle));
 				return FCollisionShape::MakeCapsule(CapsuleRadius * R, CapsuleHalfHeight * H);
 			}
 			else
 			{
-				const float R = FMath::Lerp<float>(Radius.GetValue(), MaxRadius.GetValue(), GetPawnMovementAlpha(TargetingHandle));
-				const float H = FMath::Lerp<float>(HalfHeight.GetValue(), MaxHalfHeight.GetValue(), GetPawnMovementAlpha(TargetingHandle));
+				const float R = FMath::Lerp<float>(Radius.GetValue(), MaxRadius.GetValue(), CalcPawnMovementAlpha(TargetingHandle));
+				const float H = FMath::Lerp<float>(HalfHeight.GetValue(), MaxHalfHeight.GetValue(), CalcPawnMovementAlpha(TargetingHandle));
 				return FCollisionShape::MakeCapsule(R, H);
 			}
 		}

@@ -180,9 +180,9 @@ public:
 
 	/** If the Pawn is a Character return it's Capsule Size */
 	virtual bool GetPawnCapsuleSize(const FTargetingRequestHandle& TargetingHandle, float& OutRadius, float& OutHalfHeight) const;
-	virtual float GetPawnMovementAlpha(const FTargetingRequestHandle& TargetingHandle) const;
 
 	/** Calculate the alpha to use for Acceleration and Velocity based on the Pawn's Movement */
+	virtual float CalcPawnMovementAlpha(const FTargetingRequestHandle& TargetingHandle) const;
 	
 	/** Evaluation function called by derived classes to process the targeting request */
 	virtual void Execute(const FTargetingRequestHandle& TargetingHandle) const override;

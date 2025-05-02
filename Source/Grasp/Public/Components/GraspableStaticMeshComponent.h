@@ -5,10 +5,7 @@
 #include "CoreMinimal.h"
 #include "GraspableComponent.h"
 #include "Components/StaticMeshComponent.h"
-
-#if WITH_EDITOR
 #include "GraspDeveloper.h"
-#endif
 #include "GraspableStaticMeshComponent.generated.h"
 
 class UGraspData;

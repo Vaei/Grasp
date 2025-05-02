@@ -3,15 +3,19 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayAbilitySpecHandle.h"
 #include "GameplayTagContainer.h"
+#include "GraspAbilityData.h"
 #include "GraspTags.h"
 #include "GraspTypes.h"
 #include "Components/ActorComponent.h"
 #include "Types/TargetingSystemTypes.h"
 #include "GraspComponent.generated.h"
 
+struct FGameplayAbilitySpec;
 struct FGameplayAbilityActorInfo;
 struct FGameplayAbilitySpecHandle;
+class UGraspData;
 class UGameplayAbility;
 class UAbilitySystemComponent;
 class AController;

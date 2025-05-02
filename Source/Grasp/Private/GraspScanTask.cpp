@@ -7,6 +7,7 @@
 #include "GameFramework/PlayerState.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/Pawn.h"
+#include "Components/PrimitiveComponent.h"
 #include "TargetingSystem/TargetingSubsystem.h"
 #include "TargetingSystem/TargetingPreset.h"
 #include "Engine/Engine.h"

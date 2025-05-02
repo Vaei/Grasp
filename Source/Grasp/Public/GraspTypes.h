@@ -3,15 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameplayAbilitySpecHandle.h"
 #include "GameplayTagContainer.h"
 #include "GraspTypes.generated.h"
 
-struct FGameplayAbilitySpec;
-class UAbilitySystemComponent;
-class IGraspableComponent;
-class UGameplayAbility;
-class UGraspData;
 class UGraspComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogGrasp, Log, All);
@@ -134,31 +128,3 @@ struct GRASP_API FGraspScanResult
 	}
 };
 DECLARE_DELEGATE_TwoParams(FOnGraspTargetsReady, UGraspComponent* GraspComponent, const TArray<FGraspScanResult>& Results);
-
-/**
- * Granted ability data
- */
-USTRUCT()
-struct GRASP_API FGraspAbilityData
-{
-	GENERATED_BODY()
-
-	FGraspAbilityData()
-		: bPersistent(false)
-		, Handle(FGameplayAbilitySpecHandle())
-		, Ability(nullptr)
-	{}
-	
-	UPROPERTY()
-	bool bPersistent;
-
-	UPROPERTY()
-	FGameplayAbilitySpecHandle Handle;
-
-	UPROPERTY()
-	TSubclassOf<UGameplayAbility> Ability;
-
-	/** Interactables that are in range and require this ability remain active */
-	UPROPERTY()
-	TArray<TWeakObjectPtr<const UPrimitiveComponent>> Graspables;
-};

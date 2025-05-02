@@ -7,6 +7,7 @@
 #include "GraspableOwner.h"
 #include "GraspData.h"
 #include "Abilities/GameplayAbility.h"
+#include "Components/PrimitiveComponent.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GraspFilter_Graspable)
 

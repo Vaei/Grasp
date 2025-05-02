@@ -5,10 +5,7 @@
 #include "CoreMinimal.h"
 #include "GraspableComponent.h"
 #include "Components/SphereComponent.h"
-
-#if WITH_EDITOR
 #include "GraspDeveloper.h"
-#endif
 #include "GraspableSphereComponent.generated.h"
 
 class UGraspData;

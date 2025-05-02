@@ -12,8 +12,9 @@
 #include "Engine/World.h"
 #include "Engine/GameInstance.h"
 #include "Misc/UObjectToken.h"
-
+#include "Components/PrimitiveComponent.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Logging/MessageLog.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GraspComponent)
 

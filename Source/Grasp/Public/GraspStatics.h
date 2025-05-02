@@ -7,6 +7,8 @@
 #include "GraspTypes.h"
 #include "GraspStatics.generated.h"
 
+class UGameplayAbility;
+struct FGameplayAbilitySpec;
 struct FGameplayAbilityActorInfo;
 struct FGameplayEventData;
 struct FScalableFloat;

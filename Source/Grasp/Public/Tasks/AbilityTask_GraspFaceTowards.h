@@ -11,7 +11,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FApplyFaceTowardsDelegate);
 class UCharacterMovementComponent;
 
 /**
- * Face towards a target over time
+ * Face towards a target over time using a root motion source
  */
 UCLASS()
 class GRASP_API UAbilityTask_GraspFaceTowards : public UAbilityTask

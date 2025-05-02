@@ -12,6 +12,7 @@ class UGraspComponent;
 
 /**
  * Grasp's passive perpetual task that scans for interactables nearing interaction range to grant their abilities to the owner
+ * Should only run on Authority
  */
 UCLASS(Config=Game)
 class GRASP_API UGraspScanTask : public UAbilityTask
@@ -41,8 +42,18 @@ public:
 
 	virtual void Activate() override;
 
+	/**
+	 * Wait for a bit before trying to request a Grasp again
+	 * @param Delay How long to wait before trying again
+	 * @param Reason Optional reason for waiting
+	 * @param VeryVerboseReason Optional reason for waiting, only used in debug builds
+	 */
 	void WaitForGrasp(float Delay, const TOptional<FString>& Reason = {}, const TOptional<FString>& VeryVerboseReason = {});
+
+	/** This is the main looping function, that looks for GraspableComponent */
 	void RequestGrasp();
+
+	/** Callback for when a GraspableComponent is found */
 	void OnGraspComplete(FTargetingRequestHandle TargetingHandle, FGameplayTag ScanTag);
 
 	/** Broadcast from GraspComponent */

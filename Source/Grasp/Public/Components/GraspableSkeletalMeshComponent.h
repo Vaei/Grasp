@@ -16,6 +16,7 @@ class UGraspData;
 /**
  * This component is placed on the interactable actor
  * It defines a point from which interaction can occur
+ * And provides a suitable target for focusing systems e.g. Vigil
  */
 UCLASS(Blueprintable, BlueprintType, ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class GRASP_API UGraspableSkeletalMeshComponent : public USkeletalMeshComponent, public IGraspableComponent

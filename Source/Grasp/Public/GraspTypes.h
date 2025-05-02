@@ -7,8 +7,8 @@
 #include "GameplayTagContainer.h"
 #include "GraspTypes.generated.h"
 
-class UAbilitySystemComponent;
 struct FGameplayAbilitySpec;
+class UAbilitySystemComponent;
 class IGraspableComponent;
 class UGameplayAbility;
 class UGraspData;

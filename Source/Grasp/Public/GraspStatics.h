@@ -10,9 +10,9 @@
 
 struct FGameplayAbilityActorInfo;
 struct FGameplayEventData;
+struct FScalableFloat;
 class UAbilitySystemComponent;
 class UGraspComponent;
-struct FScalableFloat;
 
 /**
  * Helper functions for Grasp
@@ -78,16 +78,31 @@ public:
 	UFUNCTION(BlueprintCallable, Category=Grasp, meta=(DefaultToSelf="Ability", DeterminesOutputType="ComponentType", DisplayName="Get Graspable Primitive"))
 	static const UPrimitiveComponent* K2_GetGraspablePrimitive(const UGameplayAbility* Ability,
 		FGameplayEventData MaybePayload);
-	
+
+	/**
+	 * Attempts to find AbilitySystemComponent for the given Actor
+	 * Will retrieve from IAbilitySystemInterface if available
+	 * Otherwise will search for the component on the Pawn if it's a Pawn,
+	 * otherwise the PlayerState if the Pawn has a PlayerState
+	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static UAbilitySystemComponent* GraspFindAbilitySystemComponentForActor(const AActor* Actor);
 
+	/**
+	 * Attempts to find a Grasp Component for the given Actor
+	 * Will return nullptr on SimulatedProxy
+	 * Attempts to find the component from the controller if available
+	 * Otherwise it will look on the Pawn's Controller if it's a Pawn
+	 * Otherwise it will look on the PlayerState's Controller if it's a PlayerState
+	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static UGraspComponent* FindGraspComponentForActor(const AActor* Actor);
 
 	/**
-	 * Attempts to find a Grasp Component for the given Pawn
+	 * Attempts to find a Grasp Component for the given Pawn's Controller
 	 * Will return nullptr on SimulatedProxy
+	 * Attempts to find the component from the controller if available
+	 * Otherwise it will look on the Pawn's Controller
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static UGraspComponent* FindGraspComponentForPawn(APawn* Pawn);
@@ -100,7 +115,7 @@ public:
 	static UGraspComponent* FindGraspComponentForController(AController* Controller);
 
 	/**
-	 * Attempts to find a Grasp Component for the given PlayerState
+	 * Attempts to find a Grasp Component for the given PlayerState's Controller
 	 * Will return nullptr on SimulatedProxy
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)

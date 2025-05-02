@@ -175,9 +175,14 @@ public:
 	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 
+	/** Find the Pawn from the Targeting Handle Source Context */
 	static APawn* GetPawnFromTargetingHandle(const FTargetingRequestHandle& TargetingHandle);
+
+	/** If the Pawn is a Character return it's Capsule Size */
 	virtual bool GetPawnCapsuleSize(const FTargetingRequestHandle& TargetingHandle, float& OutRadius, float& OutHalfHeight) const;
 	virtual float GetPawnMovementAlpha(const FTargetingRequestHandle& TargetingHandle) const;
+
+	/** Calculate the alpha to use for Acceleration and Velocity based on the Pawn's Movement */
 	
 	/** Evaluation function called by derived classes to process the targeting request */
 	virtual void Execute(const FTargetingRequestHandle& TargetingHandle) const override;

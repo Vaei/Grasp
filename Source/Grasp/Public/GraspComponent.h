@@ -11,8 +11,8 @@
 #include "GraspComponent.generated.h"
 
 struct FGameplayAbilityActorInfo;
-class UGameplayAbility;
 struct FGameplayAbilitySpecHandle;
+class UGameplayAbility;
 class UAbilitySystemComponent;
 class AController;
 
@@ -101,9 +101,11 @@ protected:
 	UPROPERTY()
 	TArray<FGraspScanResult> CurrentScanResults;
 
+	/** Data for granted abilities, mapped to the ability class */
 	UPROPERTY()
 	TMap<TSubclassOf<UGameplayAbility>, FGraspAbilityData> AbilityData;
 
+	/** The ASC we were initialized with */
 	TWeakObjectPtr<UAbilitySystemComponent> ASC;
 
 public:
@@ -146,6 +148,7 @@ public:
 	 */
 	virtual const TSubclassOf<UGameplayAbility>& GetGraspAbility(const UGraspData* Data) const;
 
+	/** Find the ability data mapped to the ability class */
 	const FGraspAbilityData* GetGraspAbilityData(const TSubclassOf<UGameplayAbility>& Ability) const;
 	
 public:

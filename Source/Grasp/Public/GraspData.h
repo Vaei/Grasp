@@ -43,9 +43,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Grasp)
 	TSubclassOf<UGameplayAbility> GraspAbility;
 
+	/**
+	 * An optional property you can utilize to determine if the ability should be activable, or continue to be active, based on whether focus is lost
+	 * Pair this with Vigil or any other focus system
+	 * Not implemented by default but common enough that it should be here
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Grasp)
 	EGraspFocusMode FocusRequirement;
 
+	/**
+	 * Angle where we can interact with the interactable
+	 * Based on the Forward Vector of the GraspableComponent holding this Data
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Grasp, meta=(UIMin="0", ClampMin="0", UIMax="360", ClampMax="360", Delta="1", ForceUnits="Degrees"))
 	float MaxGraspAngle;
 
@@ -57,6 +66,7 @@ public:
 	 * Distance when we can focus on the interactable
 	 * Typically used for UI/Visualization purposes to demonstrate we are nearing the interactable range
 	 * Set to 0.0 to disable
+	 * Not implemented by default but common enough that it should be here
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Grasp, meta=(UIMin="0", ClampMin="0", Delta="1", ForceUnits="cm"))
 	float MaxHighlightDistance;
@@ -98,9 +108,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, AdvancedDisplay, Category=Grasp, meta=(UIMin="0", ClampMin="0", UIMax="100", Delta="0.5", ForceUnits="Percent"))
 	float AuthNetToleranceDistancePct;
 
+	/**
+	 * Get the angle tolerance scalar for server authority
+	 * @return 1.f + (AuthNetToleranceAnglePct / 100.f)
+	 */
 	float GetAuthNetToleranceAngleScalar() const { return 1.f + (AuthNetToleranceAnglePct / 100.f); }
-	float GetAuthNetToleranceDistanceScalar() const { return 1.f + (AuthNetToleranceDistancePct / 100.f); }
 
+	/**
+	 * Get the distance tolerance scalar for server authority
+	 * @return 1.f + (AuthNetToleranceDistancePct / 100.f)
+	 */
+	float GetAuthNetToleranceDistanceScalar() const { return 1.f + (AuthNetToleranceDistancePct / 100.f); }
 	
 	/**
 	 * Use 2D distance checks for granting the ability

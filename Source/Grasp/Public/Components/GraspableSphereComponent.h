@@ -84,13 +84,17 @@ public:
 	{
 		Super::OnComponentCreated();
 
-		// if (GetWorld() && !GetWorld()->IsGameWorld())
-		// {
-		// 	if (const UGraspDeveloper* GraspDeveloper = GetDefault<UGraspDeveloper>())
-		// 	{
-		// 		SetCollisionObjectType(GraspDeveloper->GraspDefaultObjectType);
-		// 	}
-		// }
+		if (GetWorld() && !GetWorld()->IsGameWorld())
+		{
+			if (const UGraspDeveloper* GraspDeveloper = GetDefault<UGraspDeveloper>())
+			{
+				SetCollisionObjectType(GraspDeveloper->GraspDefaultObjectType);
+				if (GraspDeveloper->bSetDefaultOverlapChannel)
+				{
+					SetCollisionResponseToChannel(GraspDeveloper->GraspDefaultOverlapChannel, ECR_Overlap);
+				}
+			}
+		}
 	}
 #endif
 };

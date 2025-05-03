@@ -994,11 +994,11 @@ bool UGraspStatics::CanInteractWithHeight(const AActor* Interactor, const UPrimi
 }
 
 FVector2D UGraspStatics::GetScreenPositionForGraspableComponent(const UPrimitiveComponent* GraspableComponent,
-	APlayerController* PlayerController, const UWidget* Widget, bool& bSuccess)
+	APlayerController* PlayerController, bool& bSuccess, const UWidget* Widget)
 {
 	bSuccess = false;
 	FVector2D ScreenPosition;
-	if (!IsValid(PlayerController) || !IsValid(GraspableComponent) && Widget)
+	if (!IsValid(PlayerController) || !IsValid(GraspableComponent))
 	{
 		return ScreenPosition;
 	}
@@ -1013,8 +1013,11 @@ FVector2D UGraspStatics::GetScreenPositionForGraspableComponent(const UPrimitive
 		USlateBlueprintLibrary::ScreenToViewport(PlayerController, ScreenPosition, ScreenPosition);
 
 		// Adjust for the widget half size to center the widget
-		const FVector2D DesiredSize = Widget->GetDesiredSize() * 0.5f;
-		ScreenPosition -= DesiredSize;
+		if (Widget)
+		{
+			const FVector2D DesiredSize = Widget->GetDesiredSize() * 0.5f;
+			ScreenPosition -= DesiredSize;
+		}
 	}
 
 	return ScreenPosition;

@@ -343,12 +343,12 @@ public:
 	 * UI Helper to place a widget over the interactable
 	 * @param GraspableComponent The graspable component
 	 * @param PlayerController The player controller
-	 * @param Widget The widget to use for the screen position
+	 * @param Widget If supplied, will offset by half the DesiredSize to position this widget in the center of the resulting screen position
 	 * @return The screen position of the graspable component
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static FVector2D GetScreenPositionForGraspableComponent(const UPrimitiveComponent* GraspableComponent,
-		APlayerController* PlayerController, const UWidget* Widget, bool& bSuccess);
+		APlayerController* PlayerController, bool& bSuccess, const UWidget* Widget = nullptr);
 	
 public:
 	static void SetupGraspableComponentCollision(UPrimitiveComponent* GraspableComponent);

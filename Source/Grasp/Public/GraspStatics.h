@@ -7,6 +7,7 @@
 #include "GraspTypes.h"
 #include "GraspStatics.generated.h"
 
+class UGraspData;
 class UWidget;
 class UGameplayAbility;
 struct FGameplayAbilitySpec;
@@ -41,6 +42,9 @@ public:
 		FGameplayEventData& Payload, const AActor* SourceActor, const FGameplayAbilityActorInfo* ActorInfo,
 		EGraspAbilityComponentSource Source = EGraspAbilityComponentSource::EventData);
 
+	UFUNCTION(BlueprintCallable, Category=Grasp)
+	static const UGraspData* GetGraspData(const UPrimitiveComponent* GraspableComponent);
+	
 	/** 
 	 * Check CanActivateAbility()
 	 * @return True if the ability can be activated

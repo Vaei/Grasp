@@ -86,6 +86,24 @@ bool UGraspStatics::PrepareGraspAbilityDataPayload(const UPrimitiveComponent* Gr
 	return true;
 }
 
+const UGraspData* UGraspStatics::GetGraspData(const UPrimitiveComponent* GraspableComponent)
+{
+	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::GetGraspData);
+	
+	if (!GraspableComponent)
+	{
+		return nullptr;
+	}
+
+	const IGraspableComponent* Graspable = Cast<IGraspableComponent>(GraspableComponent);
+	if (!Graspable)
+	{
+		return nullptr;
+	}
+
+	return Graspable->GetGraspData();
+}
+
 bool UGraspStatics::CanGraspActivateAbility(const AActor* SourceActor, const UPrimitiveComponent* GraspableComponent,
 	EGraspAbilityComponentSource Source)
 {

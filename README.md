@@ -25,7 +25,7 @@
 ## Watch Me
 
 > [!TIP]
-> [Showcase Video](TODO)
+> [Showcase Video](https://youtu.be/irJWn86mR_k)
 
 ## How to Use
 > [!IMPORTANT]

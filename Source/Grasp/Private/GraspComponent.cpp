@@ -514,7 +514,27 @@ void UGraspComponent::EndTargetingRequests(const FGameplayTag& PresetTag, bool b
 	}
 }
 
-bool UGraspComponent::ClearGrantedGameplayAbility(const TSubclassOf<UGameplayAbility>& InAbility, bool bIgnoreInRange)
+bool UGraspComponent::IsGrantedGameplayAbilityInRange(const TSubclassOf<UGameplayAbility>& InAbility) const
+{
+	// Anything in current scan results is in range, if it has the ability we are looking for
+	for (const FGraspScanResult& Result : CurrentScanResults)
+	{
+		// We have already filtered for these
+		const UPrimitiveComponent* Component = Result.Graspable.IsValid() ? Result.Graspable.Get() : nullptr;
+		const IGraspableComponent* Graspable = CastChecked<IGraspableComponent>(Component);
+
+		// Ability to grant via data
+		const TSubclassOf<UGameplayAbility>& Ability = Graspable->GetGraspData()->GetGraspAbility();
+		if (Ability == InAbility)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool UGraspComponent::ClearGrantedGameplayAbility(const TSubclassOf<UGameplayAbility>& InAbility, bool bClearAbilitiesInRange,
+	bool bClearLockedAbilities)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspComponent::ClearGrantedGameplayAbility);
 	
@@ -537,24 +557,22 @@ bool UGraspComponent::ClearGrantedGameplayAbility(const TSubclassOf<UGameplayAbi
 	}
 
 	// Don't clear if anything is in range that has this ability
-	if (bIgnoreInRange)
+	if (!bClearAbilitiesInRange && IsGrantedGameplayAbilityInRange(InAbility))
 	{
-		// Anything in current scan results is in range, if it has the ability we are looking for
-		for (const FGraspScanResult& Result : CurrentScanResults)
+		return false;
+	}
+
+	// Don't clear locked abilities unless specified
+	if (!bClearLockedAbilities)
+	{
+		// Clear any weak null ability locks
+		Data->LockedGraspables.RemoveAll([](const TWeakObjectPtr<const UPrimitiveComponent>& WeakGraspable)
 		{
-			// We have already filtered for these
-			const UPrimitiveComponent* Component = Result.Graspable.IsValid() ? Result.Graspable.Get() : nullptr;
-			const IGraspableComponent* Graspable = CastChecked<IGraspableComponent>(Component);
+			return !WeakGraspable.IsValid();
+		});
 
-			// Ability to grant via data
-			const TSubclassOf<UGameplayAbility>& Ability = Graspable->GetGraspData()->GetGraspAbility();
-			if (Ability != InAbility)
-			{
-				// Not the ability we are looking for
-				continue;
-			}
-
-			// If this is the ability we are looking for, and it is in range, don't clear it
+		if (Data->LockedGraspables.Num() > 0)
+		{
 			return false;
 		}
 	}
@@ -568,7 +586,7 @@ bool UGraspComponent::ClearGrantedGameplayAbility(const TSubclassOf<UGameplayAbi
 }
 
 bool UGraspComponent::ClearGrantedGameplayAbilityForComponent(const UPrimitiveComponent* GraspableComponent,
-	bool bIgnoreInRange)
+	bool bClearAbilitiesInRange, bool bClearLockedAbilities)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspComponent::ClearGrantedGameplayAbilityForComponent);
 	
@@ -579,13 +597,14 @@ bool UGraspComponent::ClearGrantedGameplayAbilityForComponent(const UPrimitiveCo
 	const TSubclassOf<UGameplayAbility>& Ability = Graspable->GetGraspData()->GetGraspAbility();
 	if (Ability)
 	{
-		return ClearGrantedGameplayAbility(Ability, bIgnoreInRange);
+		return ClearGrantedGameplayAbility(Ability, bClearAbilitiesInRange, bClearLockedAbilities);
 	}
 
 	return false;
 }
 
-void UGraspComponent::ClearAllGrantedGameplayAbilities(bool bIncludeCommonAbilities, bool bIncludeScanAbility, bool bEmptyData)
+void UGraspComponent::ClearAllGrantedGameplayAbilities(bool bClearCommonAbilities, bool bClearAbilitiesInRange,
+	bool bClearLockedAbilities, bool bClearScanAbility, bool bEmptyData)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspComponent::ClearAllGrantedGameplayAbilities);
 	
@@ -594,35 +613,66 @@ void UGraspComponent::ClearAllGrantedGameplayAbilities(bool bIncludeCommonAbilit
 	{
 		FGraspAbilityData& Data = Entry.Value;
 
-		if (bIncludeCommonAbilities || !Data.bPersistent)
+		// Don't clear if anything is in range that has this ability
+		if (!bClearAbilitiesInRange && IsGrantedGameplayAbilityInRange(Data.Ability))
 		{
-			const TWeakObjectPtr<const UPrimitiveComponent>* ValidComponent = Data.Graspables.FindByPredicate(
-				[](const TWeakObjectPtr<const UPrimitiveComponent>& Graspable)
-				{
-					return Graspable.IsValid();
-				});
-			
-			const UGraspData* GraspData = ValidComponent ? CastChecked<IGraspableComponent>(ValidComponent->Get())->GetGraspData() : nullptr;
-			PreClearGraspAbility(Data.Ability, GraspData, Data);
-			ASC->ClearAbility(Data.Handle);
-			Data.Handle = FGameplayAbilitySpecHandle();
-			Data.Ability = nullptr;
+			continue;
 		}
+
+		// Don't clear locked abilities unless specified
+		if (!bClearLockedAbilities)
+		{
+			// Clear any weak null ability locks
+			Data.LockedGraspables.RemoveAll([](const TWeakObjectPtr<const UPrimitiveComponent>& WeakGraspable)
+			{
+				return !WeakGraspable.IsValid();
+			});
+
+			if (Data.LockedGraspables.Num() > 0)
+			{
+				continue;
+			}
+		}
+
+		// Don't clear common abilities unless specified
+		if (!bClearCommonAbilities && Data.bPersistent)
+		{
+			continue;
+		}
+		
+		const TWeakObjectPtr<const UPrimitiveComponent>* ValidComponent = Data.Graspables.FindByPredicate(
+			[](const TWeakObjectPtr<const UPrimitiveComponent>& Graspable)
+			{
+				return Graspable.IsValid();
+			});
+		
+		const UGraspData* GraspData = ValidComponent ? CastChecked<IGraspableComponent>(ValidComponent->Get())->GetGraspData() : nullptr;
+		PreClearGraspAbility(Data.Ability, GraspData, Data);
+		ASC->ClearAbility(Data.Handle);
+		Data.Handle = FGameplayAbilitySpecHandle();
+		Data.Ability = nullptr;
 	}
 
 	// Optionally clear the scan ability too
-	if (bIncludeScanAbility && ScanAbilityHandle.IsValid())
+	if (bClearScanAbility && ScanAbilityHandle.IsValid())
 	{
 		ASC->ClearAbility(ScanAbilityHandle);
 		ScanAbilityHandle = FGameplayAbilitySpecHandle();
 	}
 
 	// Can only empty the data if we reset the common abilities also
-	if (AbilityData.Num() == 0 && bEmptyData)
+	if (AbilityData.Num() == 0)
 	{
-		// Empty the array so it releases the allocated memory
-		// May cause frame loss
-		AbilityData.Empty();
+		if (bEmptyData)
+		{
+			// Empty the array so it releases the allocated memory
+			// May cause frame loss
+			AbilityData.Empty();
+		}
+		else
+		{
+			AbilityData.Reset();
+		}
 	}
 }
 

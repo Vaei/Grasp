@@ -229,35 +229,50 @@ public:
 	}
 
 	/**
+	 * Check if the granted gameplay ability is currently in range
+	 * This means if we clear the ability, it will be re-granted next frame
+	 * 
+	 * @param Ability The ability to check
+	 * @return True if the ability is currently in range
+	 */
+	UFUNCTION(BlueprintCallable, Category=Grasp)
+	bool IsGrantedGameplayAbilityInRange(const TSubclassOf<UGameplayAbility>& Ability) const;
+
+	/**
 	 * Clear the granted gameplay ability
 	 *
 	 * @param Ability The ability to clear
-	 * @param bIgnoreInRange If true, will ignore abilities that are currently in range of any Graspable components, i.e. they will typically be re-granted next frame
+	 * @param bClearLockedAbilities If true, will include abilities that are currently locked by AddAbilityLock()
+	 * @param bClearAbilitiesInRange If true, will ignore abilities that are currently in range of any Graspable components, i.e. they will typically be re-granted next frame
 	 * @return True if the ability was cleared
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp, meta=(AdvancedDisplay="bIgnoreInRange"))
-	bool ClearGrantedGameplayAbility(const TSubclassOf<UGameplayAbility>& Ability, bool bIgnoreInRange = true);
+	bool ClearGrantedGameplayAbility(const TSubclassOf<UGameplayAbility>& Ability, bool bClearAbilitiesInRange = false, bool bClearLockedAbilities = false);
 
 	/**
 	 * Clear the granted gameplay ability for a specific Graspable component
 	 * 
 	 * @param GraspableComponent The component to clear the ability for
-	 * @param bIgnoreInRange If true, will ignore abilities that are currently in range of the Graspable component, i.e. they will typically be re-granted next frame
+	 * @param bClearLockedAbilities If true, will include abilities that are currently locked by AddAbilityLock()
+	 * @param bClearAbilitiesInRange If true, will ignore abilities that are currently in range of the Graspable component, i.e. they will typically be re-granted next frame
 	 * @return True if the ability was cleared
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp, meta=(AdvancedDisplay="bIgnoreInRange"))
-	bool ClearGrantedGameplayAbilityForComponent(const UPrimitiveComponent* GraspableComponent, bool bIgnoreInRange = true);
+	bool ClearGrantedGameplayAbilityForComponent(const UPrimitiveComponent* GraspableComponent, bool bClearAbilitiesInRange = false, bool bClearLockedAbilities = false);
 	
 	/**
 	 * Call to clear all granted gameplay abilities
 	 * Might be worthwhile before pausing Grasp
 	 * @note Data can only be emptied if bIncludeCommonAbilities is true
-	 * @param bIncludeCommonAbilities If true, will include pre-granted interact abilities as well
-	 * @param bIncludeScanAbility If true, will include the scan ability as well, you will need to call InitializeGrasp() again to re-enable it
+	 * @param bClearCommonAbilities If true, will include pre-granted interact abilities as well
+	 * @param bClearAbilitiesInRange If true, will remove abilities that are currently in range of the Graspable component, i.e. they will typically be re-granted next frame
+	 * @param bClearLockedAbilities If true, will include abilities that are currently locked by AddAbilityLock()
+	 * @param bClearScanAbility If true, will include the scan ability as well, you will need to call InitializeGrasp() again to re-enable it
 	 * @param bEmptyData If true, will empty the ability data instead of resetting it. Emptying may cause a frame drop but resetting it keeps the array size allocated in memory
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp, meta=(AdvancedDisplay="bEmptyData"))
-	void ClearAllGrantedGameplayAbilities(bool bIncludeCommonAbilities = false, bool bIncludeScanAbility = false, bool bEmptyData = false);
+	void ClearAllGrantedGameplayAbilities(bool bClearCommonAbilities = false, bool bClearAbilitiesInRange = false,
+		bool bClearLockedAbilities = false, bool bClearScanAbility = false, bool bEmptyData = false);
 
 public:
 	/**

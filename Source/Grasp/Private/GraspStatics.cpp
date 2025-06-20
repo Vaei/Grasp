@@ -448,6 +448,88 @@ UGraspComponent* UGraspStatics::FindGraspComponentForPlayerState(APlayerState* P
 	return nullptr;
 }
 
+bool UGraspStatics::AddGraspAbilityLock(const AActor* SourceActor, const UPrimitiveComponent* GraspableComponent)
+{
+	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::AddGraspAbilityLock);
+
+	// Validate the SourceActor
+	if (!ensureMsgf(IsValid(SourceActor), TEXT("TryActivateGraspAbility: SourceActor is not valid")))
+	{
+#if WITH_EDITOR
+		FMessageLog("PIE").Error()
+			->AddToken(FTextToken::Create(FText::FromString(TEXT("TryActivateGraspAbility: SourceActor is not valid"))));
+#endif
+		return false;
+	}
+
+	// Validate the GraspableComponent
+	if (!ensureMsgf(GraspableComponent, TEXT("TryActivateGraspAbility: GraspableComponent is not valid")))
+	{
+#if WITH_EDITOR
+		FMessageLog("PIE").Error()
+			->AddToken(FUObjectToken::Create(SourceActor->GetClass()->GetDefaultObject()))
+			->AddToken(FTextToken::Create(FText::FromString(TEXT("TryActivateGraspAbility:: GraspableComponent is not valid"))));
+#endif
+		return false;
+	}
+
+	// Find the grasp component (from the SourceActor's Controller)
+	UGraspComponent* GraspComponent = FindGraspComponentForActor(SourceActor);
+	if (!ensureMsgf(GraspComponent, TEXT("TryActivateGraspAbility: Could not find GraspComponent for SourceActor: %s"), *GetNameSafe(SourceActor)))
+	{
+#if WITH_EDITOR
+		FMessageLog("PIE").Error()
+			->AddToken(FUObjectToken::Create(SourceActor->GetClass()->GetDefaultObject()))
+			->AddToken(FUObjectToken::Create(GraspableComponent->GetClass()->GetDefaultObject()))
+			->AddToken(FTextToken::Create(FText::FromString(TEXT("TryActivateGraspAbility: Could not find GraspComponent for SourceActor"))));
+#endif
+		return false;
+	}
+
+	return GraspComponent->AddAbilityLock(GraspableComponent);
+}
+
+bool UGraspStatics::RemoveGraspAbilityLock(const AActor* SourceActor, const UPrimitiveComponent* GraspableComponent)
+{
+	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::RemoveGraspAbilityLock);
+
+	// Validate the SourceActor
+	if (!ensureMsgf(IsValid(SourceActor), TEXT("TryActivateGraspAbility: SourceActor is not valid")))
+	{
+#if WITH_EDITOR
+		FMessageLog("PIE").Error()
+			->AddToken(FTextToken::Create(FText::FromString(TEXT("TryActivateGraspAbility: SourceActor is not valid"))));
+#endif
+		return false;
+	}
+
+	// Validate the GraspableComponent
+	if (!ensureMsgf(GraspableComponent, TEXT("TryActivateGraspAbility: GraspableComponent is not valid")))
+	{
+#if WITH_EDITOR
+		FMessageLog("PIE").Error()
+			->AddToken(FUObjectToken::Create(SourceActor->GetClass()->GetDefaultObject()))
+			->AddToken(FTextToken::Create(FText::FromString(TEXT("TryActivateGraspAbility:: GraspableComponent is not valid"))));
+#endif
+		return false;
+	}
+
+	// Find the grasp component (from the SourceActor's Controller)
+	UGraspComponent* GraspComponent = FindGraspComponentForActor(SourceActor);
+	if (!ensureMsgf(GraspComponent, TEXT("TryActivateGraspAbility: Could not find GraspComponent for SourceActor: %s"), *GetNameSafe(SourceActor)))
+	{
+#if WITH_EDITOR
+		FMessageLog("PIE").Error()
+			->AddToken(FUObjectToken::Create(SourceActor->GetClass()->GetDefaultObject()))
+			->AddToken(FUObjectToken::Create(GraspableComponent->GetClass()->GetDefaultObject()))
+			->AddToken(FTextToken::Create(FText::FromString(TEXT("TryActivateGraspAbility: Could not find GraspComponent for SourceActor"))));
+#endif
+		return false;
+	}
+
+	return GraspComponent->RemoveAbilityLock(GraspableComponent);
+}
+
 void UGraspStatics::FlushServerMovesForActor(AActor* CharacterActor)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::FlushServerMovesForActor);

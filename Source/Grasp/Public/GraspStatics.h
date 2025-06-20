@@ -135,6 +135,23 @@ public:
 	static UGraspComponent* FindGraspComponentForPlayerState(APlayerState* PlayerState);
 
 public:
+	/**
+	 * The GraspableComponent's ability cannot be cleared until ability lock is removed
+	 * @param SourceActor The actor that holds the UGraspComponent (e.g. Controller), or that can locate the actor holding the component (e.g. Pawn, or PlayerState)
+	 * @param GraspableComponent The component that we are trying to interact with (Grasp)
+	 * @return True if the ability lock was added
+	 */
+	static bool AddGraspAbilityLock(const AActor* SourceActor, const UPrimitiveComponent* GraspableComponent);
+
+	/**
+	 * Remove GraspableComponent's ability lock
+	 * @param SourceActor The actor that holds the UGraspComponent (e.g. Controller), or that can locate the actor holding the component (e.g. Pawn, or PlayerState)
+	 * @param GraspableComponent The component that we are trying to interact with (Grasp)
+	 * @return True if the ability lock was removed
+	 */
+	static bool RemoveGraspAbilityLock(const AActor* SourceActor, const UPrimitiveComponent* GraspableComponent);
+	
+public:
 	/** Cast the CharacterActor to a character and flush server moves on its movement component */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static void FlushServerMovesForActor(AActor* CharacterActor);

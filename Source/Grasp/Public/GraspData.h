@@ -35,6 +35,7 @@ public:
 		, bManualClearAbility(false)
 		, bGrantAbilityDistance2D(false)
 		, bGraspDistance2D(false)
+		, InputTag(FGameplayTag::EmptyTag)
 	{}
 
 protected:
@@ -142,6 +143,14 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Grasp)
 	bool bGraspDistance2D;
+	
+	/** 
+	 * Optional input tag - if set will be added to GetDynamicSpecSourceTags 
+	 * Aids compatibility with Lyra tag-based input systems
+	 * Resolves "wait for input ability task" issues when using Lyra input actions
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Grasp)
+	FGameplayTag InputTag;
 	
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;

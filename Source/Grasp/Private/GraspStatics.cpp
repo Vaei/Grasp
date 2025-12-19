@@ -238,6 +238,12 @@ bool UGraspStatics::TryActivateGraspAbility(const AActor* SourceActor, UPrimitiv
 	{
 		return false;
 	}
+	
+	// Optionally add the input tag to the ability spec
+	if (Graspable->GetGraspData()->InputTag.IsValid())
+	{
+		Spec->GetDynamicSpecSourceTags().AddTag(Graspable->GetGraspData()->InputTag);
+	}
 
 	// Notify
 	GraspComponent->PreTryActivateGraspAbility(SourceActor, GraspableComponent, Source, Spec);

@@ -72,6 +72,9 @@ Build your interaction abilities rapidly with useful functions to save you time.
 	* `UGraspStatics::GetGraspDataEntries()` added
 	* `UGraspStatics::GetGraspDataIndex()` added
 
+### 1.2.7
+* Add fallback for finding ASC on non-authority for testing ability activations
+
 ### 1.2.6
 * Add UI helper function `UGraspStatics::GetNormalizedDistanceBetweenInteractAndHighlight()`
 

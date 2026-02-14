@@ -202,6 +202,10 @@ bool UGraspStatics::CanGraspActivateAbility(const AActor* SourceActor, const UPr
 
 	// Get the ASC from the GraspComponent
 	const UAbilitySystemComponent* ASC = GraspComponent->GetASC();
+	if (!ASC)
+	{
+		ASC = GraspFindAbilitySystemComponentForActor(SourceActor);
+	}
 	if (!ensureMsgf(ASC, TEXT("CanGraspActivateAbility: Could not find AbilitySystemComponent for SourceActor: %s"), *GetNameSafe(SourceActor)))
 	{
 #if WITH_EDITOR
@@ -276,6 +280,10 @@ bool UGraspStatics::TryActivateGraspAbility(const AActor* SourceActor, UPrimitiv
 
 	// Get the ASC from the GraspComponent
 	UAbilitySystemComponent* ASC = GraspComponent->GetASC();
+	if (!ASC)
+	{
+		ASC = GraspFindAbilitySystemComponentForActor(SourceActor);
+	}
 	if (!ensureMsgf(ASC, TEXT("TryActivateGraspAbility: Could not find AbilitySystemComponent for SourceActor: %s"), *GetNameSafe(SourceActor)))
 	{
 #if WITH_EDITOR

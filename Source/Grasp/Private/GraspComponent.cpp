@@ -254,91 +254,105 @@ void UGraspComponent::GraspTargetsReady(const TArray<FGraspScanResult>& Results)
 	for (const FGraspScanResult& Result : Results)
 	{
 		TRACE_CPUPROFILER_EVENT_SCOPE(GraspComponent::GraspTargetsReady_GrantAbility);
-		
+
 		// We have already filtered for these
 		const UPrimitiveComponent* Component = Result.Graspable.IsValid() ? Result.Graspable.Get() : nullptr;
 		const IGraspableComponent* Graspable = CastChecked<IGraspableComponent>(Component);
 
-		// Ability to grant
-		const TSubclassOf<UGameplayAbility>& Ability = Graspable->GetGraspData()->GetGraspAbility();
-
-		// Add ability data
-		FGraspAbilityData& Data = AbilityData.FindOrAdd(Ability);
-
-		// This is a common ability, so we don't need to process it
-		if (Data.bPersistent)
+		const int32 NumData = Graspable->GetNumGraspData();
+		for (int32 DataIndex = 0; DataIndex < NumData; DataIndex++)
 		{
-#if UE_ENABLE_DEBUG_DRAWING || ENABLE_VISUAL_LOG
-			DrawDebugGrantAbilityLine(Component, FColor::Purple);
-#endif
-			continue;
-		}
+			const UGraspData* GraspDataEntry = Graspable->GetGraspData(DataIndex);
+			if (!GraspDataEntry)
+			{
+				continue;
+			}
 
-		// This ability is already granted
-		if (Data.Handle.IsValid())
-		{
-			if (!Data.Graspables.Contains(Component))
+			// Ability to grant
+			const TSubclassOf<UGameplayAbility>& Ability = GraspDataEntry->GetGraspAbility();
+			if (!Ability)
+			{
+				continue;
+			}
+
+			// Add ability data
+			FGraspAbilityData& Data = AbilityData.FindOrAdd(Ability);
+
+			// This is a common ability, so we don't need to process it
+			if (Data.bPersistent)
 			{
 #if UE_ENABLE_DEBUG_DRAWING || ENABLE_VISUAL_LOG
-				DrawDebugGrantAbilityBox(Component, "Retain", GetNameSafe(Ability), FColor::Yellow);
+				DrawDebugGrantAbilityLine(Component, FColor::Purple);
 #endif
-				Data.Graspables.Add(Component);
+				continue;
 			}
-#if UE_ENABLE_DEBUG_DRAWING || ENABLE_VISUAL_LOG
-			DrawDebugGrantAbilityLine(Component, FColor::Green);
-#endif
-			continue;
-		}
 
-		// Too far away to grant the ability
-		const float RequiredDistance = Graspable->GetGraspData()->NormalizedGrantAbilityDistance;
-		if (Result.NormalizedScanDistance > RequiredDistance)
-		{
-#if UE_ENABLE_DEBUG_DRAWING || ENABLE_VISUAL_LOG
-			DrawDebugGrantAbilityLine(Component, FColor::Red);
-
-			// Debug text along the line showing how far we are from granting the ability
-			if (FGraspCVars::bGiveAbilityDebug)
+			// This ability is already granted
+			if (Data.Handle.IsValid())
 			{
-				const float GrantAbilityPct = 100.f * FMath::Clamp<float>(UKismetMathLibrary::NormalizeToRange(Result.NormalizedScanDistance, RequiredDistance, 1.f), 0.f, 1.f);
-
-				const FVector TextLocation = GetTargetingSource() ? FMath::Lerp<FVector>(Component->GetComponentLocation(),
-					GetTargetingSource()->GetActorLocation(), RequiredDistance) : Component->GetComponentLocation();
-
-				DrawDebugString(GetWorld(), TextLocation + FVector(0.f, 0.f, 10.f),
-					FString::Printf(TEXT("%.2f%%"), GrantAbilityPct),
-					nullptr, FColor::Red, GetWorld()->GetDeltaSeconds() * 2.f, true);
-			}
-#endif
-			
-			UE_LOG(LogGrasp, VeryVerbose,
-				TEXT("%s GraspComponent::GraspTargetsReady: Not granting ability %s to %s, too far away. NormalizedDistance: %.1f"),
-				*GetRoleString(), *Ability->GetName(), *Result.Graspable->GetName(), Result.NormalizedScanDistance);
-			continue;
-		}
-
-		UE_LOG(LogGrasp, Verbose,
-			TEXT("%s GraspComponent::GraspTargetsReady: Granting ability %s to %s"),
-			*GetRoleString(), *Ability->GetName(), *Result.Graspable->GetName());
-
-		// Grant the ability
-		FGameplayAbilitySpec Spec = FGameplayAbilitySpec(Ability, 1, INDEX_NONE, this);
-		FGameplayAbilitySpecHandle Handle = ASC->GiveAbility(Spec);
-		
-		// Add it to our data
-		if (Handle.IsValid())
-		{
+				if (!Data.Graspables.Contains(Component))
+				{
 #if UE_ENABLE_DEBUG_DRAWING || ENABLE_VISUAL_LOG
-			DrawDebugGrantAbilityBox(Component, "Give", GetNameSafe(Ability), FColor::Green);
+					DrawDebugGrantAbilityBox(Component, "Retain", GetNameSafe(Ability), FColor::Yellow);
 #endif
-			
-			Data.Handle = Handle;
-			Data.Spec = Spec;
-			Data.Ability = Ability;
-			Data.Graspables.Add(Result.Graspable.Get());
+					Data.Graspables.Add(Component);
+				}
+#if UE_ENABLE_DEBUG_DRAWING || ENABLE_VISUAL_LOG
+				DrawDebugGrantAbilityLine(Component, FColor::Green);
+#endif
+				continue;
+			}
 
-			// Extension point
-			PostGiveGraspAbility(Ability, Component, Graspable->GetGraspData(), Data);
+			// Too far away to grant the ability
+			const float RequiredDistance = GraspDataEntry->NormalizedGrantAbilityDistance;
+			if (Result.NormalizedScanDistance > RequiredDistance)
+			{
+#if UE_ENABLE_DEBUG_DRAWING || ENABLE_VISUAL_LOG
+				DrawDebugGrantAbilityLine(Component, FColor::Red);
+
+				// Debug text along the line showing how far we are from granting the ability
+				if (FGraspCVars::bGiveAbilityDebug)
+				{
+					const float GrantAbilityPct = 100.f * FMath::Clamp<float>(UKismetMathLibrary::NormalizeToRange(Result.NormalizedScanDistance, RequiredDistance, 1.f), 0.f, 1.f);
+
+					const FVector TextLocation = GetTargetingSource() ? FMath::Lerp<FVector>(Component->GetComponentLocation(),
+						GetTargetingSource()->GetActorLocation(), RequiredDistance) : Component->GetComponentLocation();
+
+					DrawDebugString(GetWorld(), TextLocation + FVector(0.f, 0.f, 10.f),
+						FString::Printf(TEXT("%.2f%%"), GrantAbilityPct),
+						nullptr, FColor::Red, GetWorld()->GetDeltaSeconds() * 2.f, true);
+				}
+#endif
+
+				UE_LOG(LogGrasp, VeryVerbose,
+					TEXT("%s GraspComponent::GraspTargetsReady: Not granting ability %s to %s, too far away. NormalizedDistance: %.1f"),
+					*GetRoleString(), *Ability->GetName(), *Result.Graspable->GetName(), Result.NormalizedScanDistance);
+				continue;
+			}
+
+			UE_LOG(LogGrasp, Verbose,
+				TEXT("%s GraspComponent::GraspTargetsReady: Granting ability %s to %s"),
+				*GetRoleString(), *Ability->GetName(), *Result.Graspable->GetName());
+
+			// Grant the ability
+			FGameplayAbilitySpec Spec = FGameplayAbilitySpec(Ability, 1, INDEX_NONE, this);
+			FGameplayAbilitySpecHandle Handle = ASC->GiveAbility(Spec);
+
+			// Add it to our data
+			if (Handle.IsValid())
+			{
+#if UE_ENABLE_DEBUG_DRAWING || ENABLE_VISUAL_LOG
+				DrawDebugGrantAbilityBox(Component, "Give", GetNameSafe(Ability), FColor::Green);
+#endif
+
+				Data.Handle = Handle;
+				Data.Spec = Spec;
+				Data.Ability = Ability;
+				Data.Graspables.Add(Result.Graspable.Get());
+
+				// Extension point
+				PostGiveGraspAbility(Ability, Component, GraspDataEntry, Data);
+			}
 		}
 	}
 	
@@ -346,7 +360,7 @@ void UGraspComponent::GraspTargetsReady(const TArray<FGraspScanResult>& Results)
 	for (const FGraspScanResult& Result : LastScanResults)
 	{
 		TRACE_CPUPROFILER_EVENT_SCOPE(GraspComponent::GraspTargetsReady_RemoveAbility);
-		
+
 		// If still valid, don't remove
 		if (CurrentScanResults.Contains(Result))  // This compares the Graspable component
 		{
@@ -361,101 +375,102 @@ void UGraspComponent::GraspTargetsReady(const TArray<FGraspScanResult>& Results)
 		}
 		const IGraspableComponent* Graspable = CastChecked<IGraspableComponent>(Component);
 
-		// No data to retrieve ability from
-		const UGraspData* GraspData = Graspable->GetGraspData();
-		if (!GraspData)
+		const int32 NumData = Graspable->GetNumGraspData();
+		for (int32 DataIndex = 0; DataIndex < NumData; DataIndex++)
 		{
-			continue;
-		}
-		
-		// If this ability is marked for manual clearing, skip it
-		if (GraspData->bManualClearAbility)
-		{
-			continue;
-		}
+			// No data to retrieve ability from
+			const UGraspData* GraspData = Graspable->GetGraspData(DataIndex);
+			if (!GraspData)
+			{
+				continue;
+			}
 
-		// Get the ability to remove
-		const TSubclassOf<UGameplayAbility>& Ability = Graspable->GetGraspData()->GetGraspAbility();
+			// If this ability is marked for manual clearing, skip it
+			if (GraspData->bManualClearAbility)
+			{
+				continue;
+			}
 
-		// No ability to remove
-		if (!Ability)
-		{
-			continue;
-		}
+			// Get the ability to remove
+			const TSubclassOf<UGameplayAbility>& Ability = GraspData->GetGraspAbility();
 
-		// Retrieve the ability data
-		FGraspAbilityData* Data = AbilityData.Find(Ability);
+			// No ability to remove
+			if (!Ability)
+			{
+				continue;
+			}
 
-		// No ability data, already removed previously during this loop
-		if (!Data)
-		{
-			continue;
-		}
+			// Retrieve the ability data
+			FGraspAbilityData* Data = AbilityData.Find(Ability);
 
-		// This is a common ability, so we don't need to process it
-		if (Data->bPersistent)
-		{
-			continue;
-		}
+			// No ability data, already removed previously during this loop
+			if (!Data)
+			{
+				continue;
+			}
 
-		// Clear any weak null ability locks
-		Data->LockedGraspables.RemoveAll([](const TWeakObjectPtr<const UPrimitiveComponent>& WeakGraspable)
-		{
-			return !WeakGraspable.IsValid();
-		});
+			// This is a common ability, so we don't need to process it
+			if (Data->bPersistent)
+			{
+				continue;
+			}
 
-		// If ability lock is in place, skip it
-		if (Data->LockedGraspables.Num() > 0)
-		{
-			continue;
-		}
-
-		// Has the ability already been removed?
-		if (!Data->Handle.IsValid())
-		{
-			continue;
-		}
-
-		// Are we (partially) responsible for this ability?
-		if (Data->Graspables.Contains(Component))
-		{
-			// Remove our responsibility
-			Data->Graspables.Remove(Component);
-
-			// Remove any invalid graspables
-			Data->Graspables.RemoveAll([](const TWeakObjectPtr<const UPrimitiveComponent>& WeakGraspable)
+			// Clear any weak null ability locks
+			Data->LockedGraspables.RemoveAll([](const TWeakObjectPtr<const UPrimitiveComponent>& WeakGraspable)
 			{
 				return !WeakGraspable.IsValid();
 			});
 
-			UE_LOG(LogGrasp, VeryVerbose,
-				TEXT("%s GraspComponent::GraspTargetsReady: Removing ability graspable %s"),
-				*GetRoleString(), *Component->GetName());
-			
-			// If this is the last graspable, remove the ability
-			if (Data->Graspables.Num() == 0)
+			// If ability lock is in place, skip it
+			if (Data->LockedGraspables.Num() > 0)
 			{
-#if UE_ENABLE_DEBUG_DRAWING || ENABLE_VISUAL_LOG
-				DrawDebugGrantAbilityBox(Component, "Clear", GetNameSafe(Data->Ability), FColor::Red);
-#endif
-			
-				UE_LOG(LogGrasp, Verbose,
-					TEXT("%s GraspComponent::GraspTargetsReady: Removing ability %s"),
-					*GetRoleString(), *Ability->GetName());
+				continue;
+			}
 
-				// But what if something with the same ability exists in the current results?
-				// Cache the result and do it later, but only if still required
-				
-				PreClearGraspAbility(Ability, Graspable->GetGraspData(), *Data);
-				ASC->ClearAbility(Data->Handle);
-				AbilityData.Remove(Ability);
-			}
-#if UE_ENABLE_DEBUG_DRAWING || ENABLE_VISUAL_LOG
-			else
+			// Has the ability already been removed?
+			if (!Data->Handle.IsValid())
 			{
-				DrawDebugGrantAbilityBox(Component, "Forfeit", GetNameSafe(Ability), FColor::Orange);
+				continue;
 			}
+
+			// Are we (partially) responsible for this ability?
+			if (Data->Graspables.Contains(Component))
+			{
+				// Remove our responsibility
+				Data->Graspables.Remove(Component);
+
+				// Remove any invalid graspables
+				Data->Graspables.RemoveAll([](const TWeakObjectPtr<const UPrimitiveComponent>& WeakGraspable)
+				{
+					return !WeakGraspable.IsValid();
+				});
+
+				UE_LOG(LogGrasp, VeryVerbose,
+					TEXT("%s GraspComponent::GraspTargetsReady: Removing ability graspable %s"),
+					*GetRoleString(), *Component->GetName());
+
+				// If this is the last graspable, remove the ability
+				if (Data->Graspables.Num() == 0)
+				{
+#if UE_ENABLE_DEBUG_DRAWING || ENABLE_VISUAL_LOG
+					DrawDebugGrantAbilityBox(Component, "Clear", GetNameSafe(Data->Ability), FColor::Red);
 #endif
+
+					UE_LOG(LogGrasp, Verbose,
+						TEXT("%s GraspComponent::GraspTargetsReady: Removing ability %s"),
+						*GetRoleString(), *Ability->GetName());
+
+					PreClearGraspAbility(Ability, GraspData, *Data);
+					ASC->ClearAbility(Data->Handle);
+					AbilityData.Remove(Ability);
+				}
+#if UE_ENABLE_DEBUG_DRAWING || ENABLE_VISUAL_LOG
+				else
+				{
+					DrawDebugGrantAbilityBox(Component, "Forfeit", GetNameSafe(Ability), FColor::Orange);
+				}
+#endif
+			}
 		}
 	}
 }
@@ -579,11 +594,14 @@ bool UGraspComponent::IsGrantedGameplayAbilityInRange(TSubclassOf<UGameplayAbili
 		const UPrimitiveComponent* Component = Result.Graspable.IsValid() ? Result.Graspable.Get() : nullptr;
 		const IGraspableComponent* Graspable = CastChecked<IGraspableComponent>(Component);
 
-		// Ability to grant via data
-		const TSubclassOf<UGameplayAbility>& Ability = Graspable->GetGraspData()->GetGraspAbility();
-		if (Ability == InAbility)
+		// Check all GraspData entries for the ability
+		for (int32 i = 0; i < Graspable->GetNumGraspData(); i++)
 		{
-			return true;
+			const UGraspData* GraspData = Graspable->GetGraspData(i);
+			if (GraspData && GraspData->GetGraspAbility() == InAbility)
+			{
+				return true;
+			}
 		}
 	}
 	return false;
@@ -645,18 +663,26 @@ bool UGraspComponent::ClearGrantedGameplayAbilityForComponent(const UPrimitiveCo
 	bool bClearAbilitiesInRange, bool bClearLockedAbilities)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspComponent::ClearGrantedGameplayAbilityForComponent);
-	
+
 	// We have already filtered for these
 	const IGraspableComponent* Graspable = CastChecked<IGraspableComponent>(GraspableComponent);
 
-	// Ability to grant via data
-	const TSubclassOf<UGameplayAbility>& Ability = Graspable->GetGraspData()->GetGraspAbility();
-	if (Ability)
+	bool bCleared = false;
+	for (int32 i = 0; i < Graspable->GetNumGraspData(); i++)
 	{
-		return ClearGrantedGameplayAbility(Ability, bClearAbilitiesInRange, bClearLockedAbilities);
+		const UGraspData* GraspData = Graspable->GetGraspData(i);
+		if (!GraspData)
+		{
+			continue;
+		}
+		const TSubclassOf<UGameplayAbility>& Ability = GraspData->GetGraspAbility();
+		if (Ability)
+		{
+			bCleared |= ClearGrantedGameplayAbility(Ability, bClearAbilitiesInRange, bClearLockedAbilities);
+		}
 	}
 
-	return false;
+	return bCleared;
 }
 
 void UGraspComponent::ClearAllGrantedGameplayAbilities(bool bClearCommonAbilities, bool bClearAbilitiesInRange,

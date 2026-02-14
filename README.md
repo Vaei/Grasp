@@ -64,6 +64,14 @@ Build your interaction abilities rapidly with useful functions to save you time.
 
 ## Changelog
 
+### 1.3.0
+* Support multiple grasp data per component
+	* This allows multiple interaction options (e.g. Door: Open, Knock, Break)
+	* `UGraspStatics` many functions now take `GraspDataIndex`; provide this from your activating ability, UI, etc.
+	* `UGraspStatics::GetNumGraspData()` added
+	* `UGraspStatics::GetGraspDataEntries()` added
+	* `UGraspStatics::GetGraspDataIndex()` added
+
 ### 1.2.6
 * Add UI helper function `UGraspStatics::GetNormalizedDistanceBetweenInteractAndHighlight()`
 

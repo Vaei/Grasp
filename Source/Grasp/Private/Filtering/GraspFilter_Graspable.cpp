@@ -45,15 +45,18 @@ bool UGraspFilter_Graspable::ShouldFilterTarget(const FTargetingRequestHandle& T
 		return true;
 	}
 
-	// No data
-	const UGraspData* GraspData = Graspable->GetGraspData();
-	if (!GraspData)
+	// Check if any GraspData entry has a valid ability
+	bool bHasValidEntry = false;
+	for (int32 i = 0; i < Graspable->GetNumGraspData(); i++)
 	{
-		return true;
+		const UGraspData* GraspData = Graspable->GetGraspData(i);
+		if (GraspData && GraspData->GetGraspAbility())
+		{
+			bHasValidEntry = true;
+			break;
+		}
 	}
-
-	// No ability to grant
-	if (!GraspData->GetGraspAbility())
+	if (!bHasValidEntry)
 	{
 		return true;
 	}

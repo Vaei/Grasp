@@ -3,8 +3,10 @@
 
 #include "Filtering/GraspFilter_IsWithinGraspableRange.h"
 
+#include "GraspableComponent.h"
 #include "GraspComponent.h"
 #include "GraspStatics.h"
+#include "Components/PrimitiveComponent.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GraspFilter_IsWithinGraspableRange)
 
@@ -29,24 +31,28 @@ bool UGraspFilter_IsWithinGraspableRange::ShouldFilterTarget(const FTargetingReq
 	const TObjectPtr<AActor> SourceActor = SourceContext->SourceActor;
 	const UPrimitiveComponent* TargetComponent = TargetData.HitResult.GetComponent();
 
-	// Query if we can interact with the target based on angle and distance
-	float NormalizedDistance, NormalizedHighlightDistance = 0.f;
-	const EGraspQueryResult Result = UGraspStatics::CanInteractWithRange(SourceActor, TargetComponent,
-		NormalizedDistance, NormalizedHighlightDistance);
-
-	// Return the result based on the threshold
-	bool bCanInteract;
-	switch (Result)
+	const IGraspableComponent* Graspable = TargetComponent ? Cast<IGraspableComponent>(TargetComponent) : nullptr;
+	if (!Graspable)
 	{
-	case EGraspQueryResult::Highlight:
-		bCanInteract = Threshold == EGraspQueryResult::Highlight;
-		break;
-	case EGraspQueryResult::Interact:
-		bCanInteract = true;
-		break;
-	default:
 		return true;
 	}
-	
-	return !bCanInteract;
+
+	// Check if ANY GraspData entry passes the filter
+	bool bAnyPassesFilter = false;
+	for (int32 i = 0; i < Graspable->GetNumGraspData(); i++)
+	{
+		float NormalizedDistance, NormalizedHighlightDistance = 0.f;
+		const EGraspQueryResult Result = UGraspStatics::CanInteractWithRange(SourceActor, TargetComponent,
+			NormalizedDistance, NormalizedHighlightDistance, i);
+
+		const bool bPasses = (Result == EGraspQueryResult::Interact) ||
+			(Result == EGraspQueryResult::Highlight && Threshold == EGraspQueryResult::Highlight);
+		if (bPasses)
+		{
+			bAnyPassesFilter = true;
+			break;
+		}
+	}
+
+	return !bAnyPassesFilter;
 }

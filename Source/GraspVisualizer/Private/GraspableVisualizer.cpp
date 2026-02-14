@@ -53,17 +53,14 @@ void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent,
 	const FVector& Up = Transform.GetUnitAxis(EAxis::Z);
 	const float Radius = Component->Bounds.SphereRadius * 1.2f;
 
-	// Retrieve the Graspable Interface and Data
+	// Retrieve the Graspable Interface
 	const IGraspableComponent* Graspable = CastChecked<IGraspableComponent>(Component);
-	const UGraspData* Data = Graspable->GetGraspData();
 
 	// Colors for Drawing
-	const FColor Color = FColor::Green;
-	const FColor RemColor = FColor::Black;
 	const FColor ErrorColor = FColor::Red;
 
 	// If no Data is found draw a red error circle/disc
-	if (!Data)
+	if (Graspable->GetNumGraspData() == 0)
 	{
 		// Draw outline circle
 		DrawCircle(PDI, BaseLocation, Forward, Right, ErrorColor, Radius, 16, SDPG_Foreground, 1.f);
@@ -73,132 +70,154 @@ void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent,
 		return;
 	}
 
-	// Draw from above the BaseLocation based on the MaxHeightAbove
-	const FVector Location = BaseLocation + Up * Data->MaxHeightAbove;
+	// Determine which entries to visualize
+	const int32 VizIndex = Graspable->GetGraspVisualizationIndex();
+	const int32 NumData = Graspable->GetNumGraspData();
 
-	// 360 to 180
-	const float Angle = FRotator::NormalizeAxis(-(Data->MaxGraspAngle * 0.5f));
+	const int32 StartIndex = (VizIndex >= 0) ? VizIndex : 0;
+	const int32 EndIndex = (VizIndex >= 0) ? FMath::Min(VizIndex + 1, NumData) : NumData;
 
-	// More segments based on the angle
-	static constexpr int32 MaxSections = 32;
-	const int32 Sections = FMath::Max(MaxSections, FMath::CeilToInt(Angle / 180.f * MaxSections));
+	// Color cycling for multi-data visualization
+	static const FColor EntryColors[] = { FColor::Green, FColor::Cyan, FColor::Yellow, FColor::Orange };
+	static constexpr int32 NumEntryColors = UE_ARRAY_COUNT(EntryColors);
 
-	// Draw Outer and Below if applicable
-	const bool bDrawOuter = !FMath::IsNearlyZero(Data->MaxHighlightDistance) && !FMath::IsNearlyEqual(Data->MaxHighlightDistance, Data->MaxGraspDistance);
-	const bool bDrawBelow = !FMath::IsNearlyZero(Data->MaxHeightAbove) || !FMath::IsNearlyZero(Data->MaxHeightBelow);
-
-	// Determine the location below the BaseLocation based on the MaxHeightBelow
-	const FVector LocationBelow = BaseLocation - Up * Data->MaxHeightBelow;
-
-	// Distance based on whether we highlight or not
-	const float Distance = bDrawOuter ? Data->MaxHighlightDistance : Data->MaxGraspDistance;
-	
-	// Inner Arc representing the angle and grasp distance
-	DrawArc(PDI, Location, Forward, Right, -Angle, Angle, Data->MaxGraspDistance, Sections, Color, SDPG_World);
-	DrawCircle(PDI, Location, Forward, Right, RemColor, Data->MaxGraspDistance, Sections, SDPG_World);
-	if (bDrawBelow)
+	for (int32 DataIndex = StartIndex; DataIndex < EndIndex; DataIndex++)
 	{
-		DrawCircle(PDI, LocationBelow, Forward, Right, RemColor, Data->MaxGraspDistance, Sections, SDPG_World);
-	}
-	
-	// Outer Arc representing the angle and highlight distance
-	if (bDrawOuter)
-	{
-		DrawArc(PDI, Location, Forward, Right, -Angle, Angle, Data->MaxHighlightDistance, Sections, Color, SDPG_World);
-		DrawCircle(PDI, Location, Forward, Right, RemColor, Data->MaxHighlightDistance, Sections, SDPG_World, 1.f);
+		const UGraspData* Data = Graspable->GetGraspData(DataIndex);
+		if (!Data)
+		{
+			continue;
+		}
+
+		const FColor Color = EntryColors[DataIndex % NumEntryColors];
+		const FColor RemColor = FColor::Black;
+
+		// Draw from above the BaseLocation based on the MaxHeightAbove
+		const FVector Location = BaseLocation + Up * Data->MaxHeightAbove;
+
+		// 360 to 180
+		const float Angle = FRotator::NormalizeAxis(-(Data->MaxGraspAngle * 0.5f));
+
+		// More segments based on the angle
+		static constexpr int32 MaxSections = 32;
+		const int32 Sections = FMath::Max(MaxSections, FMath::CeilToInt(Angle / 180.f * MaxSections));
+
+		// Draw Outer and Below if applicable
+		const bool bDrawOuter = !FMath::IsNearlyZero(Data->MaxHighlightDistance) && !FMath::IsNearlyEqual(Data->MaxHighlightDistance, Data->MaxGraspDistance);
+		const bool bDrawBelow = !FMath::IsNearlyZero(Data->MaxHeightAbove) || !FMath::IsNearlyZero(Data->MaxHeightBelow);
+
+		// Determine the location below the BaseLocation based on the MaxHeightBelow
+		const FVector LocationBelow = BaseLocation - Up * Data->MaxHeightBelow;
+
+		// Distance based on whether we highlight or not
+		const float Distance = bDrawOuter ? Data->MaxHighlightDistance : Data->MaxGraspDistance;
+
+		// Inner Arc representing the angle and grasp distance
+		DrawArc(PDI, Location, Forward, Right, -Angle, Angle, Data->MaxGraspDistance, Sections, Color, SDPG_World);
+		DrawCircle(PDI, Location, Forward, Right, RemColor, Data->MaxGraspDistance, Sections, SDPG_World);
 		if (bDrawBelow)
 		{
-			DrawCircle(PDI, LocationBelow, Forward, Right, RemColor, Data->MaxHighlightDistance, Sections, SDPG_World, 1.f);
-		}
-	}
-
-	// Draw a circle below the BaseLocation if applicable
-	if (bDrawBelow)
-	{
-		// DrawDisc(PDI, LocationBelow, Forward, Right, FColor::White, Distance, Sections, Proxy, SDPG_World);
-		DrawCircle(PDI, LocationBelow, Forward, Right, RemColor, Distance, Sections, SDPG_World, 1.f);
-	}
-
-	// Draw lines to shade the arc
-	if (!FMath::IsNearlyZero(Angle))
-	{
-		const float AngleRadians = FMath::DegreesToRadians(Angle);
-		const float DeltaAngle = (AngleRadians * 2.f) / (Sections - 1);
-
-		// Draw a line from the origin to the inner arc showing the angle we can interact at
-		{
-			const float A = AngleRadians + (Sections-1) * -DeltaAngle;
-
-			FVector Dir = Forward * FMath::Cos(A) + Right * FMath::Sin(A);
-			FVector Start = Location;
-			FVector End = Location + Dir * Distance;
-
-			PDI->DrawLine(Start, End, Color, SDPG_World, 1.f);
-		}
-		// Draw a line from the origin to the center of the arc showing the angle we can interact at
-		{
-			FVector Start = Location;
-			FVector End = Location + Forward * Distance;
-
-			PDI->DrawLine(Start, End, Color, SDPG_World, 1.f);
-		}
-		// Draw a line from the origin to the outer arc showing the angle we can interact at
-		{
-			const float A = -AngleRadians + (Sections-1) * DeltaAngle;
-
-			FVector Dir = Forward * FMath::Cos(A) + Right * FMath::Sin(A);
-			FVector Start = Location;
-			FVector End = Location + Dir * Distance;
-
-			PDI->DrawLine(Start, End, Color, SDPG_World, 1.f);
+			DrawCircle(PDI, LocationBelow, Forward, Right, RemColor, Data->MaxGraspDistance, Sections, SDPG_World);
 		}
 
-		// Draw lines representing the angle we can interact with (shading)
-		for (int32 i = 0; i < Sections; ++i)
+		// Outer Arc representing the angle and highlight distance
+		if (bDrawOuter)
 		{
-			const float A = -AngleRadians + i * DeltaAngle;
-
-			// 2D polar to 3D vector using Forward and Right basis
-			FVector Dir = Forward * FMath::Cos(A) + Right * FMath::Sin(A);
-			FVector Start = bDrawOuter ? Location + Dir * Data->MaxGraspDistance : Location;
-			FVector End = Location + Dir * Distance;
-
-			PDI->DrawLine(Start, End, Color, SDPG_World, 1.f);
-
-			if (bDrawBelow) 
+			DrawArc(PDI, Location, Forward, Right, -Angle, Angle, Data->MaxHighlightDistance, Sections, Color, SDPG_World);
+			DrawCircle(PDI, Location, Forward, Right, RemColor, Data->MaxHighlightDistance, Sections, SDPG_World, 1.f);
+			if (bDrawBelow)
 			{
-				const FVector StartBelow = bDrawOuter ? LocationBelow + Dir * Data->MaxGraspDistance : Location;
-				FVector EndBelow = LocationBelow + Dir * Distance;
-				PDI->DrawLine(Start, StartBelow, RemColor, SDPG_World, 1.f);
-				PDI->DrawLine(End, EndBelow, RemColor, SDPG_World, 1.f);
+				DrawCircle(PDI, LocationBelow, Forward, Right, RemColor, Data->MaxHighlightDistance, Sections, SDPG_World, 1.f);
 			}
 		}
 
-		// Do the same for the part that we didn't shade, i.e. the angle we can't interact at
-		if (!FMath::IsNearlyEqual(Angle, 180.f)) 
+		// Draw a circle below the BaseLocation if applicable
+		if (bDrawBelow)
 		{
-			const int32 RemSections = FMath::Max(MaxSections, FMath::CeilToInt(180.f / Angle * MaxSections));
+			DrawCircle(PDI, LocationBelow, Forward, Right, RemColor, Distance, Sections, SDPG_World, 1.f);
+		}
 
-			const float RemAngleRadians = FMath::DegreesToRadians(FRotator::NormalizeAxis(180.f - Angle));
-			const float RemDeltaAngle = (RemAngleRadians * 2.f) / (RemSections - 1);
+		// Draw lines to shade the arc
+		if (!FMath::IsNearlyZero(Angle))
+		{
+			const float AngleRadians = FMath::DegreesToRadians(Angle);
+			const float DeltaAngle = (AngleRadians * 2.f) / (Sections - 1);
 
-			for (int32 i = 0; i < RemSections; ++i)
+			// Draw a line from the origin to the inner arc showing the angle we can interact at
 			{
-				const float A = -RemAngleRadians + i * RemDeltaAngle;
+				const float A = AngleRadians + (Sections-1) * -DeltaAngle;
+
+				FVector Dir = Forward * FMath::Cos(A) + Right * FMath::Sin(A);
+				FVector Start = Location;
+				FVector End = Location + Dir * Distance;
+
+				PDI->DrawLine(Start, End, Color, SDPG_World, 1.f);
+			}
+			// Draw a line from the origin to the center of the arc showing the angle we can interact at
+			{
+				FVector Start = Location;
+				FVector End = Location + Forward * Distance;
+
+				PDI->DrawLine(Start, End, Color, SDPG_World, 1.f);
+			}
+			// Draw a line from the origin to the outer arc showing the angle we can interact at
+			{
+				const float A = -AngleRadians + (Sections-1) * DeltaAngle;
+
+				FVector Dir = Forward * FMath::Cos(A) + Right * FMath::Sin(A);
+				FVector Start = Location;
+				FVector End = Location + Dir * Distance;
+
+				PDI->DrawLine(Start, End, Color, SDPG_World, 1.f);
+			}
+
+			// Draw lines representing the angle we can interact with (shading)
+			for (int32 i = 0; i < Sections; ++i)
+			{
+				const float A = -AngleRadians + i * DeltaAngle;
 
 				// 2D polar to 3D vector using Forward and Right basis
-				FVector Dir = -Forward * FMath::Cos(A) + Right * FMath::Sin(A);
-				FVector Start = bDrawOuter ? Location + Dir * Data->MaxHighlightDistance : Location;
-				FVector End = Location + Dir * Data->MaxGraspDistance;
+				FVector Dir = Forward * FMath::Cos(A) + Right * FMath::Sin(A);
+				FVector Start = bDrawOuter ? Location + Dir * Data->MaxGraspDistance : Location;
+				FVector End = Location + Dir * Distance;
 
-				PDI->DrawLine(Start, End, RemColor, SDPG_World, 1.f);
+				PDI->DrawLine(Start, End, Color, SDPG_World, 1.f);
 
-				if (bDrawBelow) 
+				if (bDrawBelow)
 				{
 					const FVector StartBelow = bDrawOuter ? LocationBelow + Dir * Data->MaxGraspDistance : Location;
 					FVector EndBelow = LocationBelow + Dir * Distance;
-					PDI->DrawLine(Start, EndBelow, RemColor, SDPG_World, 1.f);
-					PDI->DrawLine(End, StartBelow, RemColor, SDPG_World, 1.f);
+					PDI->DrawLine(Start, StartBelow, RemColor, SDPG_World, 1.f);
+					PDI->DrawLine(End, EndBelow, RemColor, SDPG_World, 1.f);
+				}
+			}
+
+			// Do the same for the part that we didn't shade, i.e. the angle we can't interact at
+			if (!FMath::IsNearlyEqual(Angle, 180.f))
+			{
+				const int32 RemSections = FMath::Max(MaxSections, FMath::CeilToInt(180.f / Angle * MaxSections));
+
+				const float RemAngleRadians = FMath::DegreesToRadians(FRotator::NormalizeAxis(180.f - Angle));
+				const float RemDeltaAngle = (RemAngleRadians * 2.f) / (RemSections - 1);
+
+				for (int32 i = 0; i < RemSections; ++i)
+				{
+					const float A = -RemAngleRadians + i * RemDeltaAngle;
+
+					// 2D polar to 3D vector using Forward and Right basis
+					FVector Dir = -Forward * FMath::Cos(A) + Right * FMath::Sin(A);
+					FVector Start = bDrawOuter ? Location + Dir * Data->MaxHighlightDistance : Location;
+					FVector End = Location + Dir * Data->MaxGraspDistance;
+
+					PDI->DrawLine(Start, End, RemColor, SDPG_World, 1.f);
+
+					if (bDrawBelow)
+					{
+						const FVector StartBelow = bDrawOuter ? LocationBelow + Dir * Data->MaxGraspDistance : Location;
+						FVector EndBelow = LocationBelow + Dir * Distance;
+						PDI->DrawLine(Start, EndBelow, RemColor, SDPG_World, 1.f);
+						PDI->DrawLine(End, StartBelow, RemColor, SDPG_World, 1.f);
+					}
 				}
 			}
 		}

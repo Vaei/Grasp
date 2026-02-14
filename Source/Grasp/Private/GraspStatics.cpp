@@ -31,16 +31,21 @@
 
 
 FGameplayAbilitySpec* UGraspStatics::FindGraspAbilitySpec(const UAbilitySystemComponent* ASC,
-	const UPrimitiveComponent* GraspableComponent)
+	const UPrimitiveComponent* GraspableComponent, int32 GraspDataIndex)
 {
 	const IGraspableComponent* Graspable = GraspableComponent ? CastChecked<IGraspableComponent>(GraspableComponent) : nullptr;
-	const TSubclassOf<UGameplayAbility>& GraspAbility = Graspable->GetGraspData()->GetGraspAbility();
+	const UGraspData* GraspData = Graspable->GetGraspData(GraspDataIndex);
+	if (!GraspData)
+	{
+		return nullptr;
+	}
+	const TSubclassOf<UGameplayAbility>& GraspAbility = GraspData->GetGraspAbility();
 	return ASC->FindAbilitySpecFromClass(GraspAbility);
 }
 
 bool UGraspStatics::PrepareGraspAbilityDataPayload(const UPrimitiveComponent* GraspableComponent,
 	FGameplayEventData& Payload, const AActor* SourceActor, const FGameplayAbilityActorInfo* ActorInfo,
-	EGraspAbilityComponentSource Source)
+	EGraspAbilityComponentSource Source, int32 GraspDataIndex)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::PrepareGraspAbilityDataPayload);
 	
@@ -77,6 +82,9 @@ bool UGraspStatics::PrepareGraspAbilityDataPayload(const UPrimitiveComponent* Gr
 	// Send the component along with the event data
 	Payload.OptionalObject = GraspableComponent;
 
+	// Send the specific GraspData entry that triggered this activation
+	Payload.OptionalObject2 = Graspable->GetGraspData(GraspDataIndex);
+
 	// Send the target data along with the event data
 	for (FGameplayAbilityTargetData* TargetData : OptionalTargetData)
 	{
@@ -86,10 +94,10 @@ bool UGraspStatics::PrepareGraspAbilityDataPayload(const UPrimitiveComponent* Gr
 	return true;
 }
 
-const UGraspData* UGraspStatics::GetGraspData(const UPrimitiveComponent* GraspableComponent)
+const UGraspData* UGraspStatics::GetGraspData(const UPrimitiveComponent* GraspableComponent, int32 Index)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::GetGraspData);
-	
+
 	if (!GraspableComponent)
 	{
 		return nullptr;
@@ -101,11 +109,60 @@ const UGraspData* UGraspStatics::GetGraspData(const UPrimitiveComponent* Graspab
 		return nullptr;
 	}
 
-	return Graspable->GetGraspData();
+	return Graspable->GetGraspData(Index);
+}
+
+static TArray<UGraspData*> EmptyData;
+const TArray<UGraspData*>& UGraspStatics::GetGraspDataEntries(const UPrimitiveComponent* GraspableComponent)
+{
+	if (!GraspableComponent)
+	{
+		return EmptyData;
+	}
+
+	const IGraspableComponent* Graspable = Cast<IGraspableComponent>(GraspableComponent);
+	const TArray<TObjectPtr<UGraspData>>* Entries = Graspable ? Graspable->GetGraspDataEntries() : nullptr;
+	if (Entries)
+	{
+		const TArray<UGraspData*>& Decayed = ObjectPtrDecay(*Entries);
+		return Decayed;
+	}
+	return EmptyData;
+}
+
+int32 UGraspStatics::GetGraspDataIndex(const UGraspData* GraspData, const UPrimitiveComponent* GraspableComponent)
+{
+	if (!GraspData || !GraspableComponent)
+	{
+		return INDEX_NONE;
+	}
+
+	const IGraspableComponent* Graspable = Cast<IGraspableComponent>(GraspableComponent);
+	if (const TArray<TObjectPtr<UGraspData>>* Entries = Graspable ? Graspable->GetGraspDataEntries() : nullptr)
+	{
+		return Entries->IndexOfByKey(GraspData);
+	}
+	return INDEX_NONE;
+}
+
+int32 UGraspStatics::GetNumGraspData(const UPrimitiveComponent* GraspableComponent)
+{
+	if (!GraspableComponent)
+	{
+		return 0;
+	}
+
+	const IGraspableComponent* Graspable = Cast<IGraspableComponent>(GraspableComponent);
+	return Graspable ? Graspable->GetNumGraspData() : 0;
+}
+
+const UGraspData* UGraspStatics::GetGraspDataFromPayload(const FGameplayEventData& Payload)
+{
+	return Cast<UGraspData>(Payload.OptionalObject2.Get());
 }
 
 bool UGraspStatics::CanGraspActivateAbility(const AActor* SourceActor, const UPrimitiveComponent* GraspableComponent,
-	EGraspAbilityComponentSource Source)
+	EGraspAbilityComponentSource Source, int32 GraspDataIndex)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::CanGraspActivateAbility);
 	
@@ -157,19 +214,19 @@ bool UGraspStatics::CanGraspActivateAbility(const AActor* SourceActor, const UPr
 	}
 	
 	// Retrieve the ability spec
-	const FGameplayAbilitySpec* Spec = FindGraspAbilitySpec(ASC, GraspableComponent);
+	const FGameplayAbilitySpec* Spec = FindGraspAbilitySpec(ASC, GraspableComponent, GraspDataIndex);
 	if (!Spec || !Spec->Ability)
 	{
 		return false;
 	}
-	
+
 	// Check if we can activate the ability
 	const FGameplayAbilityActorInfo* ActorInfo = ASC->AbilityActorInfo.Get();
 	FGameplayTagContainer RelevantTags;
 	if (Spec->Ability->CanActivateAbility(Spec->Handle, ActorInfo, nullptr, nullptr, &RelevantTags))
 	{
 		FGameplayEventData Payload;
-		if (PrepareGraspAbilityDataPayload(GraspableComponent, Payload, SourceActor, ActorInfo, Source))
+		if (PrepareGraspAbilityDataPayload(GraspableComponent, Payload, SourceActor, ActorInfo, Source, GraspDataIndex))
 		{
 			return Spec->Ability->ShouldAbilityRespondToEvent(ActorInfo, &Payload);
 		}
@@ -179,7 +236,7 @@ bool UGraspStatics::CanGraspActivateAbility(const AActor* SourceActor, const UPr
 }
 
 bool UGraspStatics::TryActivateGraspAbility(const AActor* SourceActor, UPrimitiveComponent* GraspableComponent,
-	EGraspAbilityComponentSource Source)
+	EGraspAbilityComponentSource Source, int32 GraspDataIndex)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::TryActivateGraspAbility);
 
@@ -234,16 +291,17 @@ bool UGraspStatics::TryActivateGraspAbility(const AActor* SourceActor, UPrimitiv
 	const IGraspableComponent* Graspable = GraspableComponent ? CastChecked<IGraspableComponent>(GraspableComponent) : nullptr;
 
 	// Retrieve the ability spec
-	FGameplayAbilitySpec* Spec = FindGraspAbilitySpec(ASC, GraspableComponent);
+	FGameplayAbilitySpec* Spec = FindGraspAbilitySpec(ASC, GraspableComponent, GraspDataIndex);
 	if (!Spec || !Spec->Ability)
 	{
 		return false;
 	}
-	
+
 	// Optionally add the input tag to the ability spec
-	if (Graspable->GetGraspData()->InputTag.IsValid())
+	const UGraspData* GraspDataEntry = Graspable->GetGraspData(GraspDataIndex);
+	if (GraspDataEntry && GraspDataEntry->InputTag.IsValid())
 	{
-		Spec->GetDynamicSpecSourceTags().AddTag(Graspable->GetGraspData()->InputTag);
+		Spec->GetDynamicSpecSourceTags().AddTag(GraspDataEntry->InputTag);
 	}
 
 	// Notify
@@ -255,7 +313,7 @@ bool UGraspStatics::TryActivateGraspAbility(const AActor* SourceActor, UPrimitiv
 	FGameplayEventData Payload;
 
 	// Prepare the payload
-	if (PrepareGraspAbilityDataPayload(GraspableComponent, Payload, SourceActor, ActorInfo, Source))
+	if (PrepareGraspAbilityDataPayload(GraspableComponent, Payload, SourceActor, ActorInfo, Source, GraspDataIndex))
 	{
 		if (ASC->TriggerAbilityFromGameplayEvent(Spec->Handle, ActorInfo,
 			FGraspTags::Grasp_Interact_Activate, &Payload, *ASC))
@@ -900,7 +958,8 @@ bool UGraspStatics::CanInteractWithinHeight(const AActor* Interactor, const FVec
 }
 
 EGraspQueryResult UGraspStatics::CanInteractWith(const AActor* Interactor, const UPrimitiveComponent* Component,
-	float& NormalizedAngleDiff, float& NormalizedDistance, float& NormalizedHighlightDistance)
+	float& NormalizedAngleDiff, float& NormalizedDistance, float& NormalizedHighlightDistance,
+	int32 GraspDataIndex)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::CanInteractWith);
 	
@@ -922,7 +981,8 @@ EGraspQueryResult UGraspStatics::CanInteractWith(const AActor* Interactor, const
 
 	// Validate the grasp data
 	const IGraspableComponent* Graspable = CastChecked<IGraspableComponent>(Component);
-	if (!ensure(Graspable->GetGraspData() != nullptr))
+	const UGraspData* Data = Graspable->GetGraspData(GraspDataIndex);
+	if (!ensure(Data != nullptr))
 	{
 		return EGraspQueryResult::None;
 	}
@@ -930,7 +990,6 @@ EGraspQueryResult UGraspStatics::CanInteractWith(const AActor* Interactor, const
 	const FVector InteractorLocation = Interactor->GetActorLocation();
 	const FVector Location = Component->GetComponentLocation();
 	const FVector Forward = Component->GetForwardVector();
-	const UGraspData* Data = Graspable->GetGraspData();
 
 	const float AuthNetToleranceAngleScalar = Data->GetAuthNetToleranceAngleScalar();
 	const float AuthNetToleranceDistanceScalar = Data->GetAuthNetToleranceDistanceScalar();
@@ -990,10 +1049,11 @@ EGraspQueryResult UGraspStatics::CanInteractWith(const AActor* Interactor, const
 }
 
 EGraspQueryResult UGraspStatics::CanInteractWithRange(const AActor* Interactor, const UPrimitiveComponent* Graspable,
-	float& NormalizedDistance, float& NormalizedHighlightDistance)
+	float& NormalizedDistance, float& NormalizedHighlightDistance,
+	int32 GraspDataIndex)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::CanInteractWithRange);
-	
+
 	NormalizedDistance = 0.f;
 	NormalizedHighlightDistance = 0.f;
 
@@ -1011,7 +1071,11 @@ EGraspQueryResult UGraspStatics::CanInteractWithRange(const AActor* Interactor, 
 
 	const FVector InteractorLocation = Interactor->GetActorLocation();
 	const FVector Location = Graspable->GetComponentLocation();
-	const UGraspData* Data = CastChecked<IGraspableComponent>(Graspable)->GetGraspData();
+	const UGraspData* Data = CastChecked<IGraspableComponent>(Graspable)->GetGraspData(GraspDataIndex);
+	if (!Data)
+	{
+		return EGraspQueryResult::None;
+	}
 
 	const float AuthNetToleranceDistanceScalar = Data->GetAuthNetToleranceDistanceScalar();
 
@@ -1045,10 +1109,10 @@ EGraspQueryResult UGraspStatics::CanInteractWithRange(const AActor* Interactor, 
 }
 
 bool UGraspStatics::CanInteractWithAngle(const AActor* Interactor, const UPrimitiveComponent* Graspable,
-	float& NormalizedAngleDiff)
+	float& NormalizedAngleDiff, int32 GraspDataIndex)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::CanInteractWithAngle);
-	
+
 	NormalizedAngleDiff = 0.f;
 
 	// Validate the interactor
@@ -1066,7 +1130,11 @@ bool UGraspStatics::CanInteractWithAngle(const AActor* Interactor, const UPrimit
 	const FVector InteractorLocation = Interactor->GetActorLocation();
 	const FVector Location = Graspable->GetComponentLocation();
 	const FVector Forward = Graspable->GetForwardVector();
-	const UGraspData* Data = CastChecked<IGraspableComponent>(Graspable)->GetGraspData();
+	const UGraspData* Data = CastChecked<IGraspableComponent>(Graspable)->GetGraspData(GraspDataIndex);
+	if (!Data)
+	{
+		return false;
+	}
 
 	const float AuthNetToleranceAngleScalar = Data->GetAuthNetToleranceAngleScalar();
 
@@ -1087,10 +1155,11 @@ bool UGraspStatics::CanInteractWithAngle(const AActor* Interactor, const UPrimit
 	return true;
 }
 
-bool UGraspStatics::CanInteractWithHeight(const AActor* Interactor, const UPrimitiveComponent* Graspable)
+bool UGraspStatics::CanInteractWithHeight(const AActor* Interactor, const UPrimitiveComponent* Graspable,
+	int32 GraspDataIndex)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::CanInteractWithHeight);
-	
+
 	// Validate the interactor
 	if (!IsValid(Interactor))
 	{
@@ -1105,7 +1174,11 @@ bool UGraspStatics::CanInteractWithHeight(const AActor* Interactor, const UPrimi
 
 	const FVector InteractorLocation = Interactor->GetActorLocation();
 	const FVector Location = Graspable->GetComponentLocation();
-	const UGraspData* Data = CastChecked<IGraspableComponent>(Graspable)->GetGraspData();
+	const UGraspData* Data = CastChecked<IGraspableComponent>(Graspable)->GetGraspData(GraspDataIndex);
+	if (!Data)
+	{
+		return false;
+	}
 
 	const float AuthNetToleranceDistanceScalar = Data->GetAuthNetToleranceDistanceScalar();
 

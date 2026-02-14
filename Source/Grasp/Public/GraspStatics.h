@@ -28,7 +28,7 @@ class GRASP_API UGraspStatics : public UBlueprintFunctionLibrary
 public:
 	/** Use the IGraspable interface to retrieve UGraspData, then use the associated ability to retrieve the ability spec from ASC */
 	static FGameplayAbilitySpec* FindGraspAbilitySpec(const UAbilitySystemComponent* ASC,
-		const UPrimitiveComponent* GraspableComponent);
+		const UPrimitiveComponent* GraspableComponent, int32 GraspDataIndex = 0);
 
 	/**
 	 * Required prior to CanGraspActivateAbility() or TryActivateGraspAbility()
@@ -40,10 +40,26 @@ public:
 	 */
 	static bool PrepareGraspAbilityDataPayload(const UPrimitiveComponent* GraspableComponent,
 		FGameplayEventData& Payload, const AActor* SourceActor, const FGameplayAbilityActorInfo* ActorInfo,
-		EGraspAbilityComponentSource Source = EGraspAbilityComponentSource::EventData);
+		EGraspAbilityComponentSource Source = EGraspAbilityComponentSource::EventData,
+		int32 GraspDataIndex = 0);
 
+	/** Retrieve the specific GraspData from the GraspableComponent using the IGraspable interface */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
-	static const UGraspData* GetGraspData(const UPrimitiveComponent* GraspableComponent);
+	static const UGraspData* GetGraspData(const UPrimitiveComponent* GraspableComponent, int32 Index = 0);
+
+	/** Retrieve all GraspData entries from the GraspableComponent using the IGraspable interface */
+	UFUNCTION(BlueprintCallable, Category=Grasp)
+	static const TArray<UGraspData*>& GetGraspDataEntries(const UPrimitiveComponent* GraspableComponent);
+	
+	UFUNCTION(BlueprintCallable, Category=Grasp)
+	static int32 GetGraspDataIndex(const UGraspData* GraspData, const UPrimitiveComponent* GraspableComponent);
+	
+	/** Retrieve the number of GraspData entries from the GraspableComponent using the IGraspable interface */
+	UFUNCTION(BlueprintCallable, Category=Grasp)
+	static int32 GetNumGraspData(const UPrimitiveComponent* GraspableComponent);
+
+	/** Retrieve the specific GraspData from event payload (set during TryActivateGraspAbility via OptionalObject2) */
+	static const UGraspData* GetGraspDataFromPayload(const FGameplayEventData& Payload);
 	
 	/** 
 	 * Check CanActivateAbility()
@@ -55,7 +71,8 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static bool CanGraspActivateAbility(const AActor* SourceActor, const UPrimitiveComponent* GraspableComponent,
-		EGraspAbilityComponentSource Source = EGraspAbilityComponentSource::EventData);
+		EGraspAbilityComponentSource Source = EGraspAbilityComponentSource::EventData,
+		int32 GraspDataIndex = 0);
 
 	/**
 	 * Use instead of TryActivateAbility, will set the SourceObject to the GraspableComponent
@@ -68,7 +85,8 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static bool TryActivateGraspAbility(const AActor* SourceActor, UPrimitiveComponent* GraspableComponent,
-		EGraspAbilityComponentSource Source = EGraspAbilityComponentSource::EventData);
+		EGraspAbilityComponentSource Source = EGraspAbilityComponentSource::EventData,
+		int32 GraspDataIndex = 0);
 
 	static const UObject* GetGraspObjectFromPayload(const FGameplayEventData& Payload);
 	
@@ -334,7 +352,8 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static EGraspQueryResult CanInteractWith(const AActor* Interactor, const UPrimitiveComponent* Graspable,
-		float& NormalizedAngleDiff, float& NormalizedDistance, float& NormalizedHighlightDistance);
+		float& NormalizedAngleDiff, float& NormalizedDistance, float& NormalizedHighlightDistance,
+		int32 GraspDataIndex = 0);
 
 	/**
 	 * Check if the Interactor is within distance to the Interactable
@@ -345,7 +364,8 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static EGraspQueryResult CanInteractWithRange(const AActor* Interactor, const UPrimitiveComponent* Graspable,
-		float& NormalizedDistance, float& NormalizedHighlightDistance);
+		float& NormalizedDistance, float& NormalizedHighlightDistance,
+		int32 GraspDataIndex = 0);
 
 	/**
 	 * Check if the Interactor is within angle to the Interactable
@@ -355,7 +375,7 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static bool CanInteractWithAngle(const AActor* Interactor, const UPrimitiveComponent* Graspable,
-		float& NormalizedAngleDiff);
+		float& NormalizedAngleDiff, int32 GraspDataIndex = 0);
 
 	/**
 	 * Check if the Interactor is within height above and below to the Interactable
@@ -363,7 +383,8 @@ public:
 	 * @param Graspable The graspable (interactable) component
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
-	static bool CanInteractWithHeight(const AActor* Interactor, const UPrimitiveComponent* Graspable);
+	static bool CanInteractWithHeight(const AActor* Interactor, const UPrimitiveComponent* Graspable,
+		int32 GraspDataIndex = 0);
 
 public:
 	/**

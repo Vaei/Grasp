@@ -3,8 +3,10 @@
 
 #include "Filtering/GraspFilter_CanActivateAbility.h"
 
+#include "GraspableComponent.h"
 #include "GraspComponent.h"
 #include "GraspStatics.h"
+#include "Components/PrimitiveComponent.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GraspFilter_CanActivateAbility)
 
@@ -29,7 +31,20 @@ bool UGraspFilter_CanActivateAbility::ShouldFilterTarget(const FTargetingRequest
 	const TObjectPtr<AActor> SourceActor = SourceContext->SourceActor;
 	const UPrimitiveComponent* TargetComponent = TargetData.HitResult.GetComponent();
 
-	// Filter out if we can't activate the ability
-	const bool CanActivateAbility = UGraspStatics::CanGraspActivateAbility(SourceActor, TargetComponent, Source);
-	return !CanActivateAbility;
+	const IGraspableComponent* Graspable = TargetComponent ? Cast<IGraspableComponent>(TargetComponent) : nullptr;
+	if (!Graspable)
+	{
+		return true;
+	}
+
+	// Check if ANY GraspData entry's ability can activate
+	for (int32 i = 0; i < Graspable->GetNumGraspData(); i++)
+	{
+		if (UGraspStatics::CanGraspActivateAbility(SourceActor, TargetComponent, Source, i))
+		{
+			return false;
+		}
+	}
+
+	return true;
 }

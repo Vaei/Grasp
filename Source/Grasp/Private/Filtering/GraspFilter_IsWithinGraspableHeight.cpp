@@ -3,8 +3,10 @@
 
 #include "Filtering/GraspFilter_IsWithinGraspableHeight.h"
 
+#include "GraspableComponent.h"
 #include "GraspComponent.h"
 #include "GraspStatics.h"
+#include "Components/PrimitiveComponent.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GraspFilter_IsWithinGraspableHeight)
 
@@ -29,6 +31,20 @@ bool UGraspFilter_IsWithinGraspableHeight::ShouldFilterTarget(const FTargetingRe
 	const TObjectPtr<AActor> SourceActor = SourceContext->SourceActor;
 	const UPrimitiveComponent* TargetComponent = TargetData.HitResult.GetComponent();
 
-	// Query if we can interact with the target based on angle and distance
-	return !UGraspStatics::CanInteractWithHeight(SourceActor, TargetComponent);
+	const IGraspableComponent* Graspable = TargetComponent ? Cast<IGraspableComponent>(TargetComponent) : nullptr;
+	if (!Graspable)
+	{
+		return true;
+	}
+
+	// Check if ANY GraspData entry passes the height filter
+	for (int32 i = 0; i < Graspable->GetNumGraspData(); i++)
+	{
+		if (UGraspStatics::CanInteractWithHeight(SourceActor, TargetComponent, i))
+		{
+			return false;
+		}
+	}
+
+	return true;
 }

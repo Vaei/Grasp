@@ -3,8 +3,10 @@
 
 #include "Filtering/GraspFilter_IsWithinGraspableAngle.h"
 
+#include "GraspableComponent.h"
 #include "GraspComponent.h"
 #include "GraspStatics.h"
+#include "Components/PrimitiveComponent.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GraspFilter_IsWithinGraspableAngle)
 
@@ -29,9 +31,21 @@ bool UGraspFilter_IsWithinGraspableAngle::ShouldFilterTarget(const FTargetingReq
 	const TObjectPtr<AActor> SourceActor = SourceContext->SourceActor;
 	const UPrimitiveComponent* TargetComponent = TargetData.HitResult.GetComponent();
 
-	// Query if we can interact with the target based on angle and distance
-	float NormalizedAngle = 0.f;
-	const bool bResult = UGraspStatics::CanInteractWithAngle(SourceActor, TargetComponent, NormalizedAngle);
+	const IGraspableComponent* Graspable = TargetComponent ? Cast<IGraspableComponent>(TargetComponent) : nullptr;
+	if (!Graspable)
+	{
+		return true;
+	}
 
-	return !bResult;
+	// Check if ANY GraspData entry passes the angle filter
+	for (int32 i = 0; i < Graspable->GetNumGraspData(); i++)
+	{
+		float NormalizedAngle = 0.f;
+		if (UGraspStatics::CanInteractWithAngle(SourceActor, TargetComponent, NormalizedAngle, i))
+		{
+			return false;
+		}
+	}
+
+	return true;
 }

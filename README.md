@@ -64,6 +64,20 @@ Build your interaction abilities rapidly with useful functions to save you time.
 
 ## Changelog
 
+### 1.4.0
+_AI QOL Update_
+
+* Add `UGraspSubsystem` world subsystem for AI spatial search (mirrors `USmartObjectSubsystem` pattern)
+	* `FindGraspable()` - single closest result
+	* `FindGraspables()` - spatial box or sphere query
+	* `FindGraspablesInList()` - search specific actor list
+	* `FindGraspablesInTargetingRequest()` - search from targeting handle results
+	* `FindGraspablesOnActor()` - all graspable components on a single actor
+	* All methods are `BlueprintCallable` with `TRACE_CPUPROFILER_EVENT_SCOPE` profiling
+* Add `FGraspRequestTypes` - `FGraspRequest`, `FGraspRequestFilter`, `FGraspRequestResult`
+	* Filter by gameplay tag query, `UGraspData` class, dead/ability-less inclusion
+	* Supports box and sphere query shapes via `bUseSphere`
+
 ### 1.3.0
 * Support multiple grasp data per component
 	* This allows multiple interaction options (e.g. Door: Open, Knock, Break)

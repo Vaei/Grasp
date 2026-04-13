@@ -83,6 +83,17 @@ enum class EGraspCardinalType : uint8
 };
 
 /**
+ * Result of GetInteractionLocationForGraspable
+ */
+UENUM(BlueprintType)
+enum class EGraspInteractionLocationResult : uint8
+{
+	Failed				UMETA(ToolTip="Could not compute a valid location (invalid component, missing data, etc.)"),
+	AlreadyInRange		UMETA(ToolTip="The NPC is already within valid angle and distance, no movement needed"),
+	NeedsToMove			UMETA(ToolTip="A valid location was computed, the NPC should move to OutLocation"),
+};
+
+/**
  * Grasp will scan for interactables to retrieve their data and ability
  */
 USTRUCT()

@@ -388,6 +388,26 @@ public:
 
 public:
 	/**
+	 * Compute a world-space location where an NPC should stand to interact with a graspable component.
+	 * Factors the graspable's angle and distance constraints from its GraspData.
+	 * If the NPC is already within valid angle and distance, returns AlreadyInRange.
+	 *
+	 * Alphas are included in case you want to reduce them so that the NPC doesn't result at the extreme edge of the valid angle/distance.
+	 *
+	 * @param InteractorLocation The current location of the NPC
+	 * @param GraspableComponent The component to interact with
+	 * @param OutLocation The computed world-space location (only valid when result is NeedsToMove)
+	 * @param GraspDataIndex Which GraspData entry to use
+	 * @param AngleAlpha How far into the valid angle range to position (0.0 = dead center facing the forward, 1.0 = extreme edge of MaxGraspAngle). Use ~0.05-0.1 to stay safely inside the range.
+	 * @param DistanceAlpha How far into the valid distance range to position (0.0 = at the graspable, 1.0 = at MaxGraspDistance). Use ~0.5-0.7 for a comfortable interaction distance.
+	 * @return Failed, AlreadyInRange, or NeedsToMove
+	 */
+	UFUNCTION(BlueprintCallable, Category=Grasp)
+	static EGraspInteractionLocationResult GetInteractionLocationForGraspable(const FVector& InteractorLocation,
+		const UPrimitiveComponent* GraspableComponent, FVector& OutLocation,
+		int32 GraspDataIndex = 0, float AngleAlpha = 1.f, float DistanceAlpha = 1.f);
+
+	/**
 	 * Get the normalized distance between interact and highlight distances
 	 * @param GraspData The grasp data
 	 * @param NormalizedHighlightDistance The normalized highlight distance

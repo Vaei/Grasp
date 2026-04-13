@@ -77,6 +77,9 @@ _AI QOL Update_
 * Add `FGraspRequestTypes` - `FGraspRequest`, `FGraspRequestFilter`, `FGraspRequestResult`
 	* Filter by gameplay tag query, `UGraspData` class, dead/ability-less inclusion
 	* Supports box and sphere query shapes via `bUseSphere`
+* Add `UGraspStatics::GetInteractionLocationForGraspable()`
+	* Intended for use with AI to find a location to move to for valid interaction based on the grasp data's interaction distance and angle
+	* Rudimentary by design; does not cast to nav mesh or adjust for obstacles
 
 ### 1.3.0
 * Support multiple grasp data per component

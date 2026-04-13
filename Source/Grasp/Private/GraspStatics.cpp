@@ -1239,3 +1239,90 @@ FVector2D UGraspStatics::GetScreenPositionForGraspableComponent(const UPrimitive
 
 	return ScreenPosition;
 }
+
+EGraspInteractionLocationResult UGraspStatics::GetInteractionLocationForGraspable(const FVector& InteractorLocation,
+	const UPrimitiveComponent* GraspableComponent, FVector& OutLocation,
+	int32 GraspDataIndex, float AngleAlpha, float DistanceAlpha)
+{
+	OutLocation = FVector::ZeroVector;
+
+	if (!IsValid(GraspableComponent))
+	{
+		return EGraspInteractionLocationResult::Failed;
+	}
+
+	const UGraspData* GraspData = GetGraspData(GraspableComponent, GraspDataIndex);
+	if (!GraspData)
+	{
+		return EGraspInteractionLocationResult::Failed;
+	}
+
+	const FVector GraspableLocation = GraspableComponent->GetComponentLocation();
+	const FVector GraspableForward = GraspableComponent->GetForwardVector();
+
+	const float CurrentDist = GraspData->bGraspDistance2D
+		? FVector::Dist2D(InteractorLocation, GraspableLocation)
+		: FVector::Dist(InteractorLocation, GraspableLocation);
+
+	const bool bInDistance = CurrentDist <= GraspData->MaxGraspDistance;
+	const bool bInAngle = (GraspData->MaxGraspAngle >= 360.f) ||
+		IsInteractableWithinAngle(GraspableLocation, InteractorLocation, GraspableForward, GraspData->MaxGraspAngle);
+
+	// Case 1: Already valid
+	if (bInDistance && bInAngle)
+	{
+		OutLocation = InteractorLocation;
+		return EGraspInteractionLocationResult::AlreadyInRange;
+	}
+
+	AngleAlpha = FMath::Clamp(AngleAlpha, 0.f, 1.f);
+	DistanceAlpha = FMath::Clamp(DistanceAlpha, 0.f, 1.f);
+
+	const float HalfAngleDeg = GraspData->MaxGraspAngle * 0.5f;
+	const float MaxAllowedAngle = HalfAngleDeg * AngleAlpha;
+	const float TargetDistance = GraspData->MaxGraspDistance * DistanceAlpha;
+
+	// Determine the target angle direction.
+	// If in angle: use the interactor's current direction from the graspable (just fix distance).
+	// If out of angle: clamp to the nearest edge of the valid cone.
+	FVector TargetDir;
+
+	if (bInAngle)
+	{
+		// Case 2: In angle, out of distance. Move straight toward the graspable along current direction.
+		TargetDir = (InteractorLocation - GraspableLocation).GetSafeNormal2D();
+	}
+	else
+	{
+		// Cases 3 & 4: Out of angle. Compute which side of the cone is nearest and clamp.
+		const FVector ToInteractor = (InteractorLocation - GraspableLocation).GetSafeNormal2D();
+		const FVector Forward2D = GraspableForward.GetSafeNormal2D();
+
+		float CurrentAngleSign = 1.f;
+		if (!ToInteractor.IsNearlyZero() && !Forward2D.IsNearlyZero())
+		{
+			CurrentAngleSign = FMath::Sign(FVector::CrossProduct(Forward2D, ToInteractor).Z);
+			if (FMath::IsNearlyZero(CurrentAngleSign))
+			{
+				CurrentAngleSign = 1.f;
+			}
+		}
+
+		// Place at the nearest cone edge, pulled inward by AngleAlpha
+		TargetDir = Forward2D.RotateAngleAxis(MaxAllowedAngle * CurrentAngleSign, FVector::UpVector);
+	}
+
+	// Determine the target distance.
+	// If in distance: keep current distance (just fixing angle).
+	// If out of distance: use the alpha-scaled max distance.
+	const float FinalDist = bInDistance ? CurrentDist : TargetDistance;
+
+	OutLocation = GraspableLocation + TargetDir * FinalDist;
+
+	if (GraspData->bGraspDistance2D)
+	{
+		OutLocation.Z = GraspableLocation.Z;
+	}
+
+	return EGraspInteractionLocationResult::NeedsToMove;
+}

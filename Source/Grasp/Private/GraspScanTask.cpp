@@ -525,6 +525,9 @@ void UGraspScanTask::OnDestroy(bool bInOwnerFinished)
 
 		if (GC.IsValid())
 		{
+			// Ensure all targeting requests are ended when the task is destroyed to prevent dangling requests
+			GC->EndAllTargetingRequests(false);
+			
 			if (GC->OnPauseGrasp.IsBoundToObject(this))
 			{
 				GC->OnPauseGrasp.Unbind();

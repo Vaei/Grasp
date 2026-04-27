@@ -64,6 +64,9 @@ Build your interaction abilities rapidly with useful functions to save you time.
 
 ## Changelog
 
+### 1.4.1
+* Fix scan task not ending targeting requests
+
 ### 1.4.0
 _AI QOL Update_
 

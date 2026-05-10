@@ -257,7 +257,7 @@ public:
 	static bool IsWithinInteractAngle(const FVector& InteractorLocation, const FVector& InteractableLocation,
 		const FVector& Forward, float Degrees, bool bCheck2D = true, bool bHalfCircle = false);
 
-	/** 
+	/**
 	 * Check if the Interactor is within the angle of the Interactable
 	 * @param InteractorLocation The location of the interactor
 	 * @param InteractableLocation The location of the interactable
@@ -267,6 +267,25 @@ public:
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static bool IsInteractableWithinAngle(const FVector& InteractorLocation, const FVector& InteractableLocation,
 		const FVector& Forward, float Degrees);
+
+	/**
+	 * World-space forward vector for a graspable component, respecting its local
+	 * forward-axis convention (IGraspableComponent::GetGraspableForwardAxis). Use this
+	 * instead of UPrimitiveComponent::GetForwardVector for any grasp angle / range /
+	 * location query so meshes authored with a non-+X forward axis work correctly.
+	 *
+	 * Falls back to FVector::ForwardVector if Graspable is null, and to the component's
+	 * +X axis if it does not implement IGraspableComponent.
+	 */
+	UFUNCTION(BlueprintCallable, Category=Grasp)
+	static FVector GetGraspableForwardVector(const UPrimitiveComponent* Graspable);
+
+	/**
+	 * Variant of GetGraspableForwardVector that operates on an explicit transform and axis.
+	 * Used when callers (e.g. component visualizers) have already pre-processed the
+	 * component transform and want the axis remap applied to that.
+	 */
+	static FVector GetGraspableForwardVectorFromTransform(const FTransform& Transform, EGraspForwardAxis Axis);
 
 	/** 
 	 * Check if the Interactor is within the angle of the Interactable

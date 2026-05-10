@@ -39,6 +39,7 @@ public:
 		if (K2_IsGraspableDead()) {	return true; }
 		return false;
 	}
+	virtual EGraspForwardAxis GetGraspableForwardAxis() const override final { return GraspableForwardAxis; }
 	/* ~IGraspable */
 
 #if WITH_EDITORONLY_DATA
@@ -60,13 +61,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Grasp, meta=(DisplayName="Grasp Data"))
 	TArray<TObjectPtr<UGraspData>> GraspDataEntries;
 
-
 #if WITH_EDITORONLY_DATA
 	/** Index of GraspData entry to visualize in editor (-1 = all, 0 = first, etc.) */
 	UPROPERTY(EditAnywhere, Category="Grasp|Debug", meta=(DisplayName="Visualize Data Index", ClampMin="-1"))
 	int32 GraspVisualizationIndex = 0;
 #endif
 
+	/**
+	 * Local axis on this mesh that points "out the front". Defaults to +X (UE convention).
+	 * Change to +Y / -Y / -X if the source FBX was authored with a different forward axis.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Grasp)
+	EGraspForwardAxis GraspableForwardAxis = EGraspForwardAxis::PosX;
+	
 	/**
 	 * Dead graspables have their abilities removed from the Pawn that they were granted to.
 	 *

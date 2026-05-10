@@ -53,6 +53,20 @@ enum class EGraspFocusMode : uint8
 	FocusAlways		UMETA(ToolTip="Requires focus to interact and ability will end if focus is lost"),
 };
 
+/**
+ * Local axis on a graspable component that points "out the front" of the mesh.
+ * Defaults to +X (UE convention). Override on mesh-based graspables whose source
+ * asset was authored with a non-+X forward axis (e.g. a +Y-forward FBX).
+ */
+UENUM(BlueprintType)
+enum class EGraspForwardAxis : uint8
+{
+	PosX	UMETA(DisplayName="+X (Default)"),
+	NegX	UMETA(DisplayName="-X"),
+	PosY	UMETA(DisplayName="+Y"),
+	NegY	UMETA(DisplayName="-Y"),
+};
+
 UENUM(BlueprintType)
 enum class EGraspCardinal_4Way : uint8
 {

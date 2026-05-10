@@ -64,6 +64,9 @@ Build your interaction abilities rapidly with useful functions to save you time.
 
 ## Changelog
 
+### 1.4.2
+* Add GraspableForwardAxis to support meshes with incorrect orientation
+
 ### 1.4.1
 * Fix scan task not ending targeting requests
 

@@ -885,6 +885,30 @@ bool UGraspStatics::IsInteractableWithinAngle(const FVector& InteractorLocation,
 		Forward, Degrees, true, false);
 }
 
+FVector UGraspStatics::GetGraspableForwardVectorFromTransform(const FTransform& Transform, EGraspForwardAxis Axis)
+{
+	switch (Axis)
+	{
+	case EGraspForwardAxis::PosX:	return Transform.GetUnitAxis(EAxis::X);
+	case EGraspForwardAxis::NegX:	return -Transform.GetUnitAxis(EAxis::X);
+	case EGraspForwardAxis::PosY:	return Transform.GetUnitAxis(EAxis::Y);
+	case EGraspForwardAxis::NegY:	return -Transform.GetUnitAxis(EAxis::Y);
+	}
+	return Transform.GetUnitAxis(EAxis::X);
+}
+
+FVector UGraspStatics::GetGraspableForwardVector(const UPrimitiveComponent* Graspable)
+{
+	if (!Graspable)
+	{
+		return FVector::ForwardVector;
+	}
+
+	const IGraspableComponent* IGraspable = Cast<IGraspableComponent>(Graspable);
+	const EGraspForwardAxis Axis = IGraspable ? IGraspable->GetGraspableForwardAxis() : EGraspForwardAxis::PosX;
+	return GetGraspableForwardVectorFromTransform(Graspable->GetComponentTransform(), Axis);
+}
+
 bool UGraspStatics::CanInteractWithinAngle(const AActor* Interactor, const FVector& InteractableLocation, float Degrees)
 {
 	if (!IsValid(Interactor))
@@ -997,7 +1021,7 @@ EGraspQueryResult UGraspStatics::CanInteractWith(const AActor* Interactor, const
 
 	const FVector InteractorLocation = Interactor->GetActorLocation();
 	const FVector Location = Component->GetComponentLocation();
-	const FVector Forward = Component->GetForwardVector();
+	const FVector Forward = GetGraspableForwardVector(Component);
 
 	const float AuthNetToleranceAngleScalar = Data->GetAuthNetToleranceAngleScalar();
 	const float AuthNetToleranceDistanceScalar = Data->GetAuthNetToleranceDistanceScalar();
@@ -1137,7 +1161,7 @@ bool UGraspStatics::CanInteractWithAngle(const AActor* Interactor, const UPrimit
 
 	const FVector InteractorLocation = Interactor->GetActorLocation();
 	const FVector Location = Graspable->GetComponentLocation();
-	const FVector Forward = Graspable->GetForwardVector();
+	const FVector Forward = GetGraspableForwardVector(Graspable);
 	const UGraspData* Data = CastChecked<IGraspableComponent>(Graspable)->GetGraspData(GraspDataIndex);
 	if (!Data)
 	{
@@ -1258,7 +1282,7 @@ EGraspInteractionLocationResult UGraspStatics::GetInteractionLocationForGraspabl
 	}
 
 	const FVector GraspableLocation = GraspableComponent->GetComponentLocation();
-	const FVector GraspableForward = GraspableComponent->GetForwardVector();
+	const FVector GraspableForward = GetGraspableForwardVector(GraspableComponent);
 
 	const float CurrentDist = GraspData->bGraspDistance2D
 		? FVector::Dist2D(InteractorLocation, GraspableLocation)

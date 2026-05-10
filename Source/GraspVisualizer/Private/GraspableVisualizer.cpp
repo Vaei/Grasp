@@ -5,6 +5,7 @@
 
 #include "GraspableComponent.h"
 #include "GraspData.h"
+#include "GraspStatics.h"
 #include "Materials/MaterialRenderProxy.h"
 
 
@@ -44,17 +45,21 @@ void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent,
 		return;
 	}
 
-	// Retrieve the transform properties
+	// Retrieve the Graspable Interface
+	const IGraspableComponent* Graspable = CastChecked<IGraspableComponent>(Component);
+
+	// Retrieve the transform properties. Forward respects the graspable's local
+	// forward-axis convention (e.g. +Y for FBX assets authored with Y forward).
+	// Right is derived perpendicular to Forward in the horizontal plane so the
+	// drawn cone always orients to the configured forward axis.
 	FTransform Transform = Component->GetComponentTransform();
 	Transform.SetRotation(FRotator(0.f, Transform.Rotator().Yaw, 0.f).Quaternion());
 	const FVector& BaseLocation = Component->GetComponentLocation();
-	const FVector& Forward = Transform.GetUnitAxis(EAxis::X);
-	const FVector& Right = Transform.GetUnitAxis(EAxis::Y);
-	const FVector& Up = Transform.GetUnitAxis(EAxis::Z);
+	const FVector Up = Transform.GetUnitAxis(EAxis::Z);
+	const FVector Forward = UGraspStatics::GetGraspableForwardVectorFromTransform(
+		Transform, Graspable->GetGraspableForwardAxis());
+	const FVector Right = FVector::CrossProduct(Up, Forward).GetSafeNormal();
 	const float Radius = Component->Bounds.SphereRadius * 1.2f;
-
-	// Retrieve the Graspable Interface
-	const IGraspableComponent* Graspable = CastChecked<IGraspableComponent>(Component);
 
 	// Colors for Drawing
 	const FColor ErrorColor = FColor::Red;

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
+#include "GraspTypes.h"
 
 #include "GraspableComponent.generated.h"
 
@@ -67,6 +68,15 @@ public:
 	 * @return True if this graspable is no longer available, e.g. a Barrel that is exploding, a Pawn who is dying.
 	 */
 	virtual bool IsGraspableDead() const { return false; }
+
+	/**
+	 * The local axis on this graspable that points "out the front" of the mesh.
+	 * Defaults to +X (UE convention). Override on mesh-based graspables whose source asset
+	 * was authored with a non-+X forward axis. Consumed by UGraspStatics::GetGraspableForwardVector
+	 * which feeds every grasp angle / range / location query, so a single override here
+	 * propagates to scanning, validation, and the editor visualizer.
+	 */
+	virtual EGraspForwardAxis GetGraspableForwardAxis() const { return EGraspForwardAxis::PosX; }
 };
 
 // Migrate deprecated single GraspData to GraspDataEntries array

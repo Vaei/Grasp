@@ -64,6 +64,10 @@ Build your interaction abilities rapidly with useful functions to save you time.
 
 ## Changelog
 
+### 1.4.3
+* Add claim interface for replicating GraspableComponent occupancy states via `FFastArraySerializer`
+	* See https://github.com/Vaei/Grasp/wiki/Claim-Hosts
+
 ### 1.4.2
 * Add GraspableForwardAxis to support meshes with incorrect orientation
 

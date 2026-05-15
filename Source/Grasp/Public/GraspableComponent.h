@@ -46,6 +46,12 @@ public:
 	/** @return The visualization index for the editor visualizer (-1 = all, 0+ = specific entry) */
 #if WITH_EDITORONLY_DATA
 	virtual int32 GetGraspVisualizationIndex() const { return 0; }
+
+	/**
+	 * @return True if the editor visualizer should draw the AI variants of the grasp parameters
+	 * (gated additionally by UGraspData::bAIUseSeparateParams). Editor-only.
+	 */
+	virtual bool ShouldVisualizeAIParams() const { return false; }
 #endif
 
 	/**

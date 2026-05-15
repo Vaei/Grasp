@@ -419,12 +419,14 @@ public:
 	 * @param GraspDataIndex Which GraspData entry to use
 	 * @param AngleAlpha How far into the valid angle range to position (0.0 = dead center facing the forward, 1.0 = extreme edge of MaxGraspAngle). Use ~0.05-0.1 to stay safely inside the range.
 	 * @param DistanceAlpha How far into the valid distance range to position (0.0 = at the graspable, 1.0 = at MaxGraspDistance). Use ~0.5-0.7 for a comfortable interaction distance.
+	 * @param Interactor Optional interactor actor. If supplied and the graspable's data has bAIUseSeparateParams, bot-controlled pawns will resolve their AI variant of angle/distance instead of the defaults.
 	 * @return Failed, AlreadyInRange, or NeedsToMove
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static EGraspInteractionLocationResult GetInteractionLocationForGraspable(const FVector& InteractorLocation,
 		const UPrimitiveComponent* GraspableComponent, FVector& OutLocation,
-		int32 GraspDataIndex = 0, float AngleAlpha = 1.f, float DistanceAlpha = 1.f);
+		int32 GraspDataIndex = 0, float AngleAlpha = 1.f, float DistanceAlpha = 1.f,
+		const AActor* Interactor = nullptr);
 
 	/**
 	 * Get the normalized distance between interact and highlight distances

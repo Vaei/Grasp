@@ -7,6 +7,7 @@
 #include "Engine/DataAsset.h"
 #include "GraspData.generated.h"
 
+class AActor;
 class UGameplayAbility;
 
 /**
@@ -35,6 +36,12 @@ public:
 		, bManualClearAbility(false)
 		, bGrantAbilityDistance2D(false)
 		, bGraspDistance2D(false)
+		, bAIUseSeparateParams(false)
+		, AIMaxGraspAngle(360.f)
+		, AIMaxGraspDistance(200.f)
+		, AIMaxHeightAbove(30.f)
+		, AIMaxHeightBelow(30.f)
+		, bAIGraspDistance2D(false)
 		, InputTag(FGameplayTag::EmptyTag)
 	{}
 
@@ -143,9 +150,76 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Grasp)
 	bool bGraspDistance2D;
-	
-	/** 
-	 * Optional input tag - if set will be added to GetDynamicSpecSourceTags 
+
+	/**
+	 * If true, bot-controlled pawns (APawn::IsBotControlled) use the AI-specific
+	 * angle/distance/height values below instead of the default ones above.
+	 * Players, controllers without a bot-controlled pawn, and non-pawn interactors
+	 * always use the default values.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=AI)
+	bool bAIUseSeparateParams;
+
+	/** AI variant of MaxGraspAngle. Only used when bAIUseSeparateParams and the interactor is a bot. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=AI, meta=(EditCondition="bAIUseSeparateParams", UIMin="0", ClampMin="0", UIMax="360", ClampMax="360", Delta="1", ForceUnits="Degrees"))
+	float AIMaxGraspAngle;
+
+	/** AI variant of MaxGraspDistance. Only used when bAIUseSeparateParams and the interactor is a bot. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=AI, meta=(EditCondition="bAIUseSeparateParams", UIMin="0", ClampMin="0", Delta="1", ForceUnits="cm"))
+	float AIMaxGraspDistance;
+
+	/** AI variant of MaxHeightAbove. Only used when bAIUseSeparateParams and the interactor is a bot. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=AI, meta=(EditCondition="bAIUseSeparateParams", UIMin="0", ClampMin="0", Delta="1", ForceUnits="cm"))
+	float AIMaxHeightAbove;
+
+	/** AI variant of MaxHeightBelow. Only used when bAIUseSeparateParams and the interactor is a bot. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=AI, meta=(EditCondition="bAIUseSeparateParams", UIMin="0", ClampMin="0", Delta="1", ForceUnits="cm"))
+	float AIMaxHeightBelow;
+
+	/** AI variant of bGraspDistance2D. Only used when bAIUseSeparateParams and the interactor is a bot. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=AI, meta=(EditCondition="bAIUseSeparateParams"))
+	bool bAIGraspDistance2D;
+
+	/**
+	 * Resolve whether the AI variant fields should be used for this interactor.
+	 * Returns true only when bAIUseSeparateParams is set AND the interactor (or its
+	 * controlled pawn, if a controller was passed) reports APawn::IsBotControlled.
+	 */
+	UFUNCTION(BlueprintPure, Category=Grasp)
+	bool ShouldUseAIParams(const AActor* Interactor) const;
+
+	UFUNCTION(BlueprintPure, Category=Grasp)
+	float GetMaxGraspAngle(const AActor* Interactor) const
+	{
+		return ShouldUseAIParams(Interactor) ? AIMaxGraspAngle : MaxGraspAngle;
+	}
+
+	UFUNCTION(BlueprintPure, Category=Grasp)
+	float GetMaxGraspDistance(const AActor* Interactor) const
+	{
+		return ShouldUseAIParams(Interactor) ? AIMaxGraspDistance : MaxGraspDistance;
+	}
+
+	UFUNCTION(BlueprintPure, Category=Grasp)
+	float GetMaxHeightAbove(const AActor* Interactor) const
+	{
+		return ShouldUseAIParams(Interactor) ? AIMaxHeightAbove : MaxHeightAbove;
+	}
+
+	UFUNCTION(BlueprintPure, Category=Grasp)
+	float GetMaxHeightBelow(const AActor* Interactor) const
+	{
+		return ShouldUseAIParams(Interactor) ? AIMaxHeightBelow : MaxHeightBelow;
+	}
+
+	UFUNCTION(BlueprintPure, Category=Grasp)
+	bool IsGraspDistance2D(const AActor* Interactor) const
+	{
+		return ShouldUseAIParams(Interactor) ? bAIGraspDistance2D : bGraspDistance2D;
+	}
+
+	/**
+	 * Optional input tag - if set will be added to GetDynamicSpecSourceTags
 	 * Aids compatibility with Lyra tag-based input systems
 	 * Resolves "wait for input ability task" issues when using Lyra input actions
 	 */

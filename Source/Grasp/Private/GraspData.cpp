@@ -3,6 +3,8 @@
 
 #include "GraspData.h"
 #include "Abilities/GameplayAbility.h"
+#include "GameFramework/Controller.h"
+#include "GameFramework/Pawn.h"
 
 #if WITH_EDITOR
 #include "Misc/DataValidation.h"
@@ -14,6 +16,24 @@
 TSubclassOf<UGameplayAbility> UGraspData::GetGraspAbility_Implementation() const
 {
 	return GraspAbility;
+}
+
+bool UGraspData::ShouldUseAIParams(const AActor* Interactor) const
+{
+	if (!bAIUseSeparateParams || !Interactor)
+	{
+		return false;
+	}
+
+	const APawn* Pawn = Cast<APawn>(Interactor);
+	if (!Pawn)
+	{
+		if (const AController* Controller = Cast<AController>(Interactor))
+		{
+			Pawn = Controller->GetPawn();
+		}
+	}
+	return Pawn && Pawn->IsBotControlled();
 }
 
 #if WITH_EDITOR

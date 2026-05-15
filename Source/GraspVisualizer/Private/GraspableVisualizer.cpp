@@ -78,6 +78,7 @@ void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent,
 	// Determine which entries to visualize
 	const int32 VizIndex = Graspable->GetGraspVisualizationIndex();
 	const int32 NumData = Graspable->GetNumGraspData();
+	const bool bVisualizeAIParams = Graspable->ShouldVisualizeAIParams();
 
 	const int32 StartIndex = (VizIndex >= 0) ? VizIndex : 0;
 	const int32 EndIndex = (VizIndex >= 0) ? FMath::Min(VizIndex + 1, NumData) : NumData;
@@ -97,32 +98,41 @@ void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent,
 		const FColor Color = EntryColors[DataIndex % NumEntryColors];
 		const FColor RemColor = FColor::Black;
 
+		// When the component requests it AND the data has bAIUseSeparateParams set,
+		// the visualizer reflects the AI cone instead of the default one. Highlight
+		// distance is intentionally shared and stays from the default fields.
+		const bool bUseAI = bVisualizeAIParams && Data->bAIUseSeparateParams;
+		const float MaxGraspAngle = bUseAI ? Data->AIMaxGraspAngle : Data->MaxGraspAngle;
+		const float MaxGraspDistance = bUseAI ? Data->AIMaxGraspDistance : Data->MaxGraspDistance;
+		const float MaxHeightAbove = bUseAI ? Data->AIMaxHeightAbove : Data->MaxHeightAbove;
+		const float MaxHeightBelow = bUseAI ? Data->AIMaxHeightBelow : Data->MaxHeightBelow;
+
 		// Draw from above the BaseLocation based on the MaxHeightAbove
-		const FVector Location = BaseLocation + Up * Data->MaxHeightAbove;
+		const FVector Location = BaseLocation + Up * MaxHeightAbove;
 
 		// 360 to 180
-		const float Angle = FRotator::NormalizeAxis(-(Data->MaxGraspAngle * 0.5f));
+		const float Angle = FRotator::NormalizeAxis(-(MaxGraspAngle * 0.5f));
 
 		// More segments based on the angle
 		static constexpr int32 MaxSections = 32;
 		const int32 Sections = FMath::Max(MaxSections, FMath::CeilToInt(Angle / 180.f * MaxSections));
 
 		// Draw Outer and Below if applicable
-		const bool bDrawOuter = !FMath::IsNearlyZero(Data->MaxHighlightDistance) && !FMath::IsNearlyEqual(Data->MaxHighlightDistance, Data->MaxGraspDistance);
-		const bool bDrawBelow = !FMath::IsNearlyZero(Data->MaxHeightAbove) || !FMath::IsNearlyZero(Data->MaxHeightBelow);
+		const bool bDrawOuter = !FMath::IsNearlyZero(Data->MaxHighlightDistance) && !FMath::IsNearlyEqual(Data->MaxHighlightDistance, MaxGraspDistance);
+		const bool bDrawBelow = !FMath::IsNearlyZero(MaxHeightAbove) || !FMath::IsNearlyZero(MaxHeightBelow);
 
 		// Determine the location below the BaseLocation based on the MaxHeightBelow
-		const FVector LocationBelow = BaseLocation - Up * Data->MaxHeightBelow;
+		const FVector LocationBelow = BaseLocation - Up * MaxHeightBelow;
 
 		// Distance based on whether we highlight or not
-		const float Distance = bDrawOuter ? Data->MaxHighlightDistance : Data->MaxGraspDistance;
+		const float Distance = bDrawOuter ? Data->MaxHighlightDistance : MaxGraspDistance;
 
 		// Inner Arc representing the angle and grasp distance
-		DrawArc(PDI, Location, Forward, Right, -Angle, Angle, Data->MaxGraspDistance, Sections, Color, SDPG_World);
-		DrawCircle(PDI, Location, Forward, Right, RemColor, Data->MaxGraspDistance, Sections, SDPG_World);
+		DrawArc(PDI, Location, Forward, Right, -Angle, Angle, MaxGraspDistance, Sections, Color, SDPG_World);
+		DrawCircle(PDI, Location, Forward, Right, RemColor, MaxGraspDistance, Sections, SDPG_World);
 		if (bDrawBelow)
 		{
-			DrawCircle(PDI, LocationBelow, Forward, Right, RemColor, Data->MaxGraspDistance, Sections, SDPG_World);
+			DrawCircle(PDI, LocationBelow, Forward, Right, RemColor, MaxGraspDistance, Sections, SDPG_World);
 		}
 
 		// Outer Arc representing the angle and highlight distance
@@ -183,14 +193,14 @@ void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent,
 
 				// 2D polar to 3D vector using Forward and Right basis
 				FVector Dir = Forward * FMath::Cos(A) + Right * FMath::Sin(A);
-				FVector Start = bDrawOuter ? Location + Dir * Data->MaxGraspDistance : Location;
+				FVector Start = bDrawOuter ? Location + Dir * MaxGraspDistance : Location;
 				FVector End = Location + Dir * Distance;
 
 				PDI->DrawLine(Start, End, Color, SDPG_World, 1.f);
 
 				if (bDrawBelow)
 				{
-					const FVector StartBelow = bDrawOuter ? LocationBelow + Dir * Data->MaxGraspDistance : Location;
+					const FVector StartBelow = bDrawOuter ? LocationBelow + Dir * MaxGraspDistance : Location;
 					FVector EndBelow = LocationBelow + Dir * Distance;
 					PDI->DrawLine(Start, StartBelow, RemColor, SDPG_World, 1.f);
 					PDI->DrawLine(End, EndBelow, RemColor, SDPG_World, 1.f);
@@ -212,13 +222,13 @@ void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent,
 					// 2D polar to 3D vector using Forward and Right basis
 					FVector Dir = -Forward * FMath::Cos(A) + Right * FMath::Sin(A);
 					FVector Start = bDrawOuter ? Location + Dir * Data->MaxHighlightDistance : Location;
-					FVector End = Location + Dir * Data->MaxGraspDistance;
+					FVector End = Location + Dir * MaxGraspDistance;
 
 					PDI->DrawLine(Start, End, RemColor, SDPG_World, 1.f);
 
 					if (bDrawBelow)
 					{
-						const FVector StartBelow = bDrawOuter ? LocationBelow + Dir * Data->MaxGraspDistance : Location;
+						const FVector StartBelow = bDrawOuter ? LocationBelow + Dir * MaxGraspDistance : Location;
 						FVector EndBelow = LocationBelow + Dir * Distance;
 						PDI->DrawLine(Start, EndBelow, RemColor, SDPG_World, 1.f);
 						PDI->DrawLine(End, StartBelow, RemColor, SDPG_World, 1.f);

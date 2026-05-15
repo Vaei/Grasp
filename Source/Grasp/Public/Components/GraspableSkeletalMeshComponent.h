@@ -33,6 +33,7 @@ public:
 	virtual int32 GetNumGraspData() const override final { return GraspDataEntries.Num(); }
 #if WITH_EDITORONLY_DATA
 	virtual int32 GetGraspVisualizationIndex() const override final { return GraspVisualizationIndex; }
+	virtual bool ShouldVisualizeAIParams() const override final { return bVisualizeAIParams; }
 #endif
 	virtual bool IsGraspableDead() const override
 	{
@@ -65,6 +66,10 @@ public:
 	/** Index of GraspData entry to visualize in editor (-1 = all, 0 = first, etc.) */
 	UPROPERTY(EditAnywhere, Category="Grasp|Debug", meta=(DisplayName="Visualize Data Index", ClampMin="-1"))
 	int32 GraspVisualizationIndex = 0;
+
+	/** Draw the visualizer using the AI variants of the grasp parameters (only takes effect when the GraspData has bAIUseSeparateParams set) */
+	UPROPERTY(EditAnywhere, Category=Grasp, meta=(DisplayName="Visualize AI Parameters"))
+	bool bVisualizeAIParams = false;
 #endif
 
 	/**

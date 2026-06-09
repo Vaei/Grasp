@@ -270,9 +270,11 @@ public:
 
 	/**
 	 * World-space forward vector for a graspable component, respecting its local
-	 * forward-axis convention (IGraspableComponent::GetGraspableForwardAxis). Use this
+	 * forward-axis convention (IGraspableComponent::GetGraspableForwardAxis) and its
+	 * yaw offset (IGraspableComponent::GetGraspableYawOffset). Use this
 	 * instead of UPrimitiveComponent::GetForwardVector for any grasp angle / range /
-	 * location query so meshes authored with a non-+X forward axis work correctly.
+	 * location query so meshes authored with a non-+X forward axis, or whose grasp facing
+	 * is decoupled from the component rotation, work correctly.
 	 *
 	 * Falls back to FVector::ForwardVector if Graspable is null, and to the component's
 	 * +X axis if it does not implement IGraspableComponent.
@@ -281,11 +283,15 @@ public:
 	static FVector GetGraspableForwardVector(const UPrimitiveComponent* Graspable);
 
 	/**
-	 * Variant of GetGraspableForwardVector that operates on an explicit transform and axis.
-	 * Used when callers (e.g. component visualizers) have already pre-processed the
-	 * component transform and want the axis remap applied to that.
+	 * Variant of GetGraspableForwardVector that operates on an explicit transform, axis and
+	 * yaw offset. Used when callers (e.g. component visualizers) have already pre-processed
+	 * the component transform and want the axis remap plus yaw offset applied to that.
+	 *
+	 * The axis selects a local forward; YawOffset (degrees) then rotates it about the
+	 * transform's local up axis before mapping into world space.
 	 */
-	static FVector GetGraspableForwardVectorFromTransform(const FTransform& Transform, EGraspForwardAxis Axis);
+	static FVector GetGraspableForwardVectorFromTransform(const FTransform& Transform, EGraspForwardAxis Axis,
+		float YawOffset = 0.f);
 
 	/** 
 	 * Check if the Interactor is within the angle of the Interactable

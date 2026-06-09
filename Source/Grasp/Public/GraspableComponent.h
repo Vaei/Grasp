@@ -83,6 +83,17 @@ public:
 	 * propagates to scanning, validation, and the editor visualizer.
 	 */
 	virtual EGraspForwardAxis GetGraspableForwardAxis() const { return EGraspForwardAxis::PosX; }
+
+	/**
+	 * Additional yaw in degrees applied about the graspable's local up axis, after the
+	 * forward-axis remap (GetGraspableForwardAxis). Lets the grasp facing direction be aimed
+	 * independently of the component's own rotation. This matters when rotating the component
+	 * to set the grasp angle is undesirable, e.g. a skeletal mesh whose rotation is driven by
+	 * animation, where you want the interaction arc decoupled from the mesh's current pose.
+	 * Like the forward axis, this is consumed by UGraspStatics::GetGraspableForwardVector and
+	 * so propagates to scanning, validation, and the editor visualizer.
+	 */
+	virtual float GetGraspableYawOffset() const { return 0.f; }
 };
 
 // Migrate deprecated single GraspData to GraspDataEntries array

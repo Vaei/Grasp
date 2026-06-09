@@ -885,16 +885,29 @@ bool UGraspStatics::IsInteractableWithinAngle(const FVector& InteractorLocation,
 		Forward, Degrees, true, false);
 }
 
-FVector UGraspStatics::GetGraspableForwardVectorFromTransform(const FTransform& Transform, EGraspForwardAxis Axis)
+FVector UGraspStatics::GetGraspableForwardVectorFromTransform(const FTransform& Transform, EGraspForwardAxis Axis,
+	float YawOffset)
 {
+	// Resolve the local forward from the authored forward-axis convention
+	FVector LocalForward;
 	switch (Axis)
 	{
-	case EGraspForwardAxis::PosX:	return Transform.GetUnitAxis(EAxis::X);
-	case EGraspForwardAxis::NegX:	return -Transform.GetUnitAxis(EAxis::X);
-	case EGraspForwardAxis::PosY:	return Transform.GetUnitAxis(EAxis::Y);
-	case EGraspForwardAxis::NegY:	return -Transform.GetUnitAxis(EAxis::Y);
+	case EGraspForwardAxis::NegX:	LocalForward = -FVector::ForwardVector;	break;	// (-1, 0, 0)
+	case EGraspForwardAxis::PosY:	LocalForward = FVector::RightVector;	break;	// ( 0, 1, 0)
+	case EGraspForwardAxis::NegY:	LocalForward = -FVector::RightVector;	break;	// ( 0,-1, 0)
+	case EGraspForwardAxis::PosX:
+	default:						LocalForward = FVector::ForwardVector;	break;	// ( 1, 0, 0)
 	}
-	return Transform.GetUnitAxis(EAxis::X);
+
+	// Apply the optional yaw offset about the local up axis, decoupling the grasp facing
+	// from the component's own rotation. Done in local space so it composes with the axis
+	// remap and stays correct for graspables that pitch/roll (e.g. mounted on a ship).
+	if (!FMath::IsNearlyZero(YawOffset))
+	{
+		LocalForward = FRotator(0.f, YawOffset, 0.f).RotateVector(LocalForward);
+	}
+
+	return Transform.TransformVectorNoScale(LocalForward);
 }
 
 FVector UGraspStatics::GetGraspableForwardVector(const UPrimitiveComponent* Graspable)
@@ -906,7 +919,8 @@ FVector UGraspStatics::GetGraspableForwardVector(const UPrimitiveComponent* Gras
 
 	const IGraspableComponent* IGraspable = Cast<IGraspableComponent>(Graspable);
 	const EGraspForwardAxis Axis = IGraspable ? IGraspable->GetGraspableForwardAxis() : EGraspForwardAxis::PosX;
-	return GetGraspableForwardVectorFromTransform(Graspable->GetComponentTransform(), Axis);
+	const float YawOffset = IGraspable ? IGraspable->GetGraspableYawOffset() : 0.f;
+	return GetGraspableForwardVectorFromTransform(Graspable->GetComponentTransform(), Axis, YawOffset);
 }
 
 bool UGraspStatics::CanInteractWithinAngle(const AActor* Interactor, const FVector& InteractableLocation, float Degrees)

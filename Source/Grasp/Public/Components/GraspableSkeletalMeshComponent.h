@@ -41,6 +41,7 @@ public:
 		return false;
 	}
 	virtual EGraspForwardAxis GetGraspableForwardAxis() const override final { return GraspableForwardAxis; }
+	virtual float GetGraspableYawOffset() const override final { return GraspableYawOffset; }
 	/* ~IGraspable */
 
 #if WITH_EDITORONLY_DATA
@@ -78,6 +79,10 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Grasp)
 	EGraspForwardAxis GraspableForwardAxis = EGraspForwardAxis::PosX;
+
+	/** Additional yaw in degrees applied about this component's local up axis, used to aim the grasp facing direction. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Grasp, meta=(UIMin="-180", UIMax="180", ClampMin="-180", ClampMax="180"))
+	float GraspableYawOffset = 0.f;
 
 	/**
 	 * Dead graspables have their abilities removed from the Pawn that they were granted to.

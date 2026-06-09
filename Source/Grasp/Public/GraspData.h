@@ -88,6 +88,7 @@ public:
 
 	/**
 	 * Maximum height the interactor can be above the interactable
+	 * The interactor location is based on GetActorLocation of the interactor, so typically for a character this is the center of the capsule
 	 * Stops us from interacting with things that are below us
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Grasp, meta=(UIMin="0", ClampMin="0", Delta="1", ForceUnits="cm"))
@@ -95,6 +96,7 @@ public:
 
 	/**
 	 * Maximum height the interactor can be below the interactable
+	 * The interactor location is based on GetActorLocation of the interactor, so typically for a character this is the center of the capsule
 	 * Stops us from interacting with things that are above us
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Grasp, meta=(UIMin="0", ClampMin="0", Delta="1", ForceUnits="cm"))

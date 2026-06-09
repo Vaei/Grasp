@@ -49,7 +49,8 @@ void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent,
 	const IGraspableComponent* Graspable = CastChecked<IGraspableComponent>(Component);
 
 	// Retrieve the transform properties. Forward respects the graspable's local
-	// forward-axis convention (e.g. +Y for FBX assets authored with Y forward).
+	// forward-axis convention (e.g. +Y for FBX assets authored with Y forward) and its
+	// yaw offset (which aims the grasp facing independently of the component rotation).
 	// Right is derived perpendicular to Forward in the horizontal plane so the
 	// drawn cone always orients to the configured forward axis.
 	FTransform Transform = Component->GetComponentTransform();
@@ -57,7 +58,7 @@ void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent,
 	const FVector& BaseLocation = Component->GetComponentLocation();
 	const FVector Up = Transform.GetUnitAxis(EAxis::Z);
 	const FVector Forward = UGraspStatics::GetGraspableForwardVectorFromTransform(
-		Transform, Graspable->GetGraspableForwardAxis());
+		Transform, Graspable->GetGraspableForwardAxis(), Graspable->GetGraspableYawOffset());
 	const FVector Right = FVector::CrossProduct(Up, Forward).GetSafeNormal();
 	const float Radius = Component->Bounds.SphereRadius * 1.2f;
 

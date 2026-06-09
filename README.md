@@ -64,6 +64,9 @@ Build your interaction abilities rapidly with useful functions to save you time.
 
 ## Changelog
 
+### 1.4.5
+* Add `GraspableYawOffset` to detach Graspable mesh components from their rotations
+
 ### 1.4.4
 * Add optional separate AI parameters
 

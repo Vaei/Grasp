@@ -43,6 +43,7 @@ public:
 		, AIMaxHeightBelow(30.f)
 		, bAIGraspDistance2D(false)
 		, InputTag(FGameplayTag::EmptyTag)
+		, GraspableYawOffset(0.f)
 	{}
 
 protected:
@@ -227,7 +228,20 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Grasp)
 	FGameplayTag InputTag;
-	
+
+	/**
+	 * Additional yaw in degrees applied about the graspable's local up axis, compounded on top
+	 * of the component's own offset (IGraspableComponent::GetGraspableYawOffset). Lets a single
+	 * graspable component host multiple GraspData entries whose interaction arcs face different
+	 * directions, without rotating the component. Consumed by UGraspStatics::GetGraspableForwardVector
+	 * and so propagates to scanning, validation, and the editor visualizer.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Grasp, meta=(UIMin="-180", UIMax="180", ClampMin="-180", ClampMax="180", Delta="1", ForceUnits="Degrees"))
+	float GraspableYawOffset;
+
+	/** @return Additional grasp-facing yaw (degrees) from this data, compounded with the component's own offset. */
+	float GetGraspableYawOffset() const { return GraspableYawOffset; }
+
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
 	virtual EDataValidationResult IsDataValid(class FDataValidationContext& Context) const override;

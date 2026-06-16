@@ -276,11 +276,15 @@ public:
 	 * location query so meshes authored with a non-+X forward axis, or whose grasp facing
 	 * is decoupled from the component rotation, work correctly.
 	 *
+	 * If Data is provided, its UGraspData::GetGraspableYawOffset is compounded with the
+	 * component's offset so a single graspable can host multiple GraspData entries whose
+	 * interaction arcs face different directions.
+	 *
 	 * Falls back to FVector::ForwardVector if Graspable is null, and to the component's
 	 * +X axis if it does not implement IGraspableComponent.
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
-	static FVector GetGraspableForwardVector(const UPrimitiveComponent* Graspable);
+	static FVector GetGraspableForwardVector(const UPrimitiveComponent* Graspable, const UGraspData* Data = nullptr);
 
 	/**
 	 * Variant of GetGraspableForwardVector that operates on an explicit transform, axis and

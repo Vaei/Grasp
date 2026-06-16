@@ -64,6 +64,9 @@ Build your interaction abilities rapidly with useful functions to save you time.
 
 ## Changelog
 
+### 1.4.6
+* Add `GraspableYawOffset` to `GraspData`, compounded with the component offset so per-data interaction arcs can face different directions
+
 ### 1.4.5
 * Add `GraspableYawOffset` to detach Graspable mesh components from their rotations
 

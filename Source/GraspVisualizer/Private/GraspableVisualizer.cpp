@@ -48,18 +48,19 @@ void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent,
 	// Retrieve the Graspable Interface
 	const IGraspableComponent* Graspable = CastChecked<IGraspableComponent>(Component);
 
-	// Retrieve the transform properties. Forward respects the graspable's local
+	// Retrieve the transform properties. BaseForward respects the graspable's local
 	// forward-axis convention (e.g. +Y for FBX assets authored with Y forward) and its
-	// yaw offset (which aims the grasp facing independently of the component rotation).
-	// Right is derived perpendicular to Forward in the horizontal plane so the
-	// drawn cone always orients to the configured forward axis.
+	// component-level yaw offset (which aims the grasp facing independently of the component
+	// rotation). The per-data offset is compounded inside the loop below. BaseRight is derived
+	// perpendicular to BaseForward in the horizontal plane so the drawn cone always orients to
+	// the configured forward axis.
 	FTransform Transform = Component->GetComponentTransform();
 	Transform.SetRotation(FRotator(0.f, Transform.Rotator().Yaw, 0.f).Quaternion());
 	const FVector& BaseLocation = Component->GetComponentLocation();
 	const FVector Up = Transform.GetUnitAxis(EAxis::Z);
-	const FVector Forward = UGraspStatics::GetGraspableForwardVectorFromTransform(
+	const FVector BaseForward = UGraspStatics::GetGraspableForwardVectorFromTransform(
 		Transform, Graspable->GetGraspableForwardAxis(), Graspable->GetGraspableYawOffset());
-	const FVector Right = FVector::CrossProduct(Up, Forward).GetSafeNormal();
+	const FVector BaseRight = FVector::CrossProduct(Up, BaseForward).GetSafeNormal();
 	const float Radius = Component->Bounds.SphereRadius * 1.2f;
 
 	// Colors for Drawing
@@ -69,10 +70,10 @@ void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent,
 	if (Graspable->GetNumGraspData() == 0)
 	{
 		// Draw outline circle
-		DrawCircle(PDI, BaseLocation, Forward, Right, ErrorColor, Radius, 16, SDPG_Foreground, 1.f);
+		DrawCircle(PDI, BaseLocation, BaseForward, BaseRight, ErrorColor, Radius, 16, SDPG_Foreground, 1.f);
 
 		// Draw inner disc
-		DrawDisc(PDI, BaseLocation, Forward, Right, ErrorColor, Radius, 16, Proxy, SDPG_Foreground);
+		DrawDisc(PDI, BaseLocation, BaseForward, BaseRight, ErrorColor, Radius, 16, Proxy, SDPG_Foreground);
 		return;
 	}
 
@@ -95,6 +96,13 @@ void FGraspableVisualizer::DrawVisualization(const UActorComponent* InComponent,
 		{
 			continue;
 		}
+
+		// Compound the component-level yaw with this entry's offset so each data's cone can
+		// face a different direction off the same component
+		const FVector Forward = UGraspStatics::GetGraspableForwardVectorFromTransform(
+			Transform, Graspable->GetGraspableForwardAxis(),
+			Graspable->GetGraspableYawOffset() + Data->GetGraspableYawOffset());
+		const FVector Right = FVector::CrossProduct(Up, Forward).GetSafeNormal();
 
 		const FColor Color = EntryColors[DataIndex % NumEntryColors];
 		const FColor RemColor = FColor::Black;

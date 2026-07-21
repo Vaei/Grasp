@@ -35,13 +35,16 @@ public:
 	 * if checking ShouldAbilityRespondToEvent() or ActivateAbilityFromEvent()
 	 *
 	 * Payload will only be prepared if bAlwaysTriggerEvent is true or IGraspable::GatherOptionalGraspTargetData() returns any target data
-	 * 
+	 *
+	 * EntryState is carried on the prepared payload's EventMagnitude so the ability can activate directly
+	 * into a non-default state.
+	 *
 	 * @return True if a Payload was prepared, true if IGraspable::GatherOptionalGraspTargetData() returns any target data
 	 */
 	static bool PrepareGraspAbilityDataPayload(const UPrimitiveComponent* GraspableComponent,
 		FGameplayEventData& Payload, const AActor* SourceActor, const FGameplayAbilityActorInfo* ActorInfo,
 		EGraspAbilityComponentSource Source = EGraspAbilityComponentSource::EventData,
-		int32 GraspDataIndex = 0);
+		int32 GraspDataIndex = 0, uint8 EntryState = 0);
 
 	/** Retrieve the specific GraspData from the GraspableComponent using the IGraspable interface */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
@@ -67,12 +70,13 @@ public:
 	 * @param SourceActor The actor that holds the UGraspComponent (e.g. Controller), or that can locate the actor holding the component (e.g. Pawn, or PlayerState)
 	 * @param GraspableComponent The component that we are trying to interact with (Grasp)
 	 * @param Source The source from where grasp abilities retrieve the graspable component
+	 * @param EntryState State the ability would activate into; the ability may reject an unsupported state
 	 * @return True if the ability can be activated
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static bool CanGraspActivateAbility(const AActor* SourceActor, const UPrimitiveComponent* GraspableComponent,
 		EGraspAbilityComponentSource Source = EGraspAbilityComponentSource::EventData,
-		int32 GraspDataIndex = 0);
+		int32 GraspDataIndex = 0, uint8 EntryState = 0);
 
 	/**
 	 * Use instead of TryActivateAbility, will set the SourceObject to the GraspableComponent
@@ -82,11 +86,12 @@ public:
 	 * @param SourceActor The actor that holds the UGraspComponent (e.g. Controller), or that can locate the actor holding the component (e.g. Pawn, or PlayerState)
 	 * @param GraspableComponent The component that we are trying to interact with (Grasp)
 	 * @param Source The source from where grasp abilities retrieve the graspable component
+	 * @param EntryState State to activate the ability into (0 = default); carried on the payload's EventMagnitude
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static bool TryActivateGraspAbility(const AActor* SourceActor, UPrimitiveComponent* GraspableComponent,
 		EGraspAbilityComponentSource Source = EGraspAbilityComponentSource::EventData,
-		int32 GraspDataIndex = 0);
+		int32 GraspDataIndex = 0, uint8 EntryState = 0);
 
 	static const UObject* GetGraspObjectFromPayload(const FGameplayEventData& Payload);
 	

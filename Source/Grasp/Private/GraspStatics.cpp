@@ -45,7 +45,7 @@ FGameplayAbilitySpec* UGraspStatics::FindGraspAbilitySpec(const UAbilitySystemCo
 
 bool UGraspStatics::PrepareGraspAbilityDataPayload(const UPrimitiveComponent* GraspableComponent,
 	FGameplayEventData& Payload, const AActor* SourceActor, const FGameplayAbilityActorInfo* ActorInfo,
-	EGraspAbilityComponentSource Source, int32 GraspDataIndex)
+	EGraspAbilityComponentSource Source, int32 GraspDataIndex, uint8 EntryState)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::PrepareGraspAbilityDataPayload);
 	
@@ -84,6 +84,9 @@ bool UGraspStatics::PrepareGraspAbilityDataPayload(const UPrimitiveComponent* Gr
 
 	// Send the specific GraspData entry that triggered this activation
 	Payload.OptionalObject2 = Graspable->GetGraspData(GraspDataIndex);
+
+	// Carry the requested entry state so the ability can activate directly into a non-default state
+	Payload.EventMagnitude = static_cast<float>(EntryState);
 
 	// Send the target data along with the event data
 	for (FGameplayAbilityTargetData* TargetData : OptionalTargetData)
@@ -162,7 +165,7 @@ const UGraspData* UGraspStatics::GetGraspDataFromPayload(const FGameplayEventDat
 }
 
 bool UGraspStatics::CanGraspActivateAbility(const AActor* SourceActor, const UPrimitiveComponent* GraspableComponent,
-	EGraspAbilityComponentSource Source, int32 GraspDataIndex)
+	EGraspAbilityComponentSource Source, int32 GraspDataIndex, uint8 EntryState)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::CanGraspActivateAbility);
 	
@@ -230,7 +233,7 @@ bool UGraspStatics::CanGraspActivateAbility(const AActor* SourceActor, const UPr
 	if (Spec->Ability->CanActivateAbility(Spec->Handle, ActorInfo, nullptr, nullptr, &RelevantTags))
 	{
 		FGameplayEventData Payload;
-		if (PrepareGraspAbilityDataPayload(GraspableComponent, Payload, SourceActor, ActorInfo, Source, GraspDataIndex))
+		if (PrepareGraspAbilityDataPayload(GraspableComponent, Payload, SourceActor, ActorInfo, Source, GraspDataIndex, EntryState))
 		{
 			return Spec->Ability->ShouldAbilityRespondToEvent(ActorInfo, &Payload);
 		}
@@ -240,7 +243,7 @@ bool UGraspStatics::CanGraspActivateAbility(const AActor* SourceActor, const UPr
 }
 
 bool UGraspStatics::TryActivateGraspAbility(const AActor* SourceActor, UPrimitiveComponent* GraspableComponent,
-	EGraspAbilityComponentSource Source, int32 GraspDataIndex)
+	EGraspAbilityComponentSource Source, int32 GraspDataIndex, uint8 EntryState)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::TryActivateGraspAbility);
 
@@ -321,7 +324,7 @@ bool UGraspStatics::TryActivateGraspAbility(const AActor* SourceActor, UPrimitiv
 	FGameplayEventData Payload;
 
 	// Prepare the payload
-	if (PrepareGraspAbilityDataPayload(GraspableComponent, Payload, SourceActor, ActorInfo, Source, GraspDataIndex))
+	if (PrepareGraspAbilityDataPayload(GraspableComponent, Payload, SourceActor, ActorInfo, Source, GraspDataIndex, EntryState))
 	{
 		if (ASC->TriggerAbilityFromGameplayEvent(Spec->Handle, ActorInfo,
 			FGraspTags::Grasp_Interact_Activate, &Payload, *ASC))

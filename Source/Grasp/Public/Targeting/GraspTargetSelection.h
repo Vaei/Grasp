@@ -138,6 +138,14 @@ protected:
 	float GetMaxHalfHeightScalar() const { return MovementSelectionMode != EGraspMovementSelectionMode::Disabled ? MaxHalfHeightScalar.GetValue() : HalfHeightScalar.GetValue(); }
 	FVector GetMaxHalfExtent() const { return MovementSelectionMode != EGraspMovementSelectionMode::Disabled ? MaxHalfExtent : HalfExtent; }
 	
+	/** Which up direction the cylinder's radius constraint is measured against (the cylinder axis) */
+	UPROPERTY(EditAnywhere, Category="Grasp Selection Shape", meta=(EditCondition="ShapeType==EGraspTargetingShape::Cylinder", EditConditionHides))
+	EGraspSelectionUpMode UpMode = EGraspSelectionUpMode::WorldUp;
+
+	/** The up vector used when UpMode is CustomUp */
+	UPROPERTY(EditAnywhere, Category="Grasp Selection Shape", meta=(EditCondition="ShapeType==EGraspTargetingShape::Cylinder&&UpMode==EGraspSelectionUpMode::CustomUp", EditConditionHides))
+	FVector CustomUp = FVector::UpVector;
+
 	/**
 	 * Radius used by Grasp for granting abilities
 	 * Calculated based on the shape dimensions
@@ -165,6 +173,9 @@ protected:
 	/** Native event to get the source rotation for the AOE  */
 	UFUNCTION(BlueprintNativeEvent, Category="Grasp Selection")
 	FQuat GetSourceRotationOffset(const FTargetingRequestHandle& TargetingHandle) const;
+
+	/** Up basis for up-dependent constraints; defaults to the configured UpMode/CustomUp. Override to resolve per-source. */
+	virtual FVector GetUpVector(const FTargetingRequestHandle& TargetingHandle, const FQuat& SourceRotation) const;
 
 public:
 	void UpdateGraspAbilityRadius();

@@ -34,6 +34,18 @@ enum class EGraspTargetRotationSource : uint8
 	Acceleration,
 };
 
+/**
+ * Which up direction Grasp selection constraints are measured against
+ */
+UENUM(BlueprintType)
+enum class EGraspSelectionUpMode : uint8
+{
+	WorldUp				UMETA(ToolTip="Use the world up vector (+Z)"),
+	SourceRotationUp	UMETA(ToolTip="Use the up axis of the resolved source rotation (e.g. the view or camera rotation)"),
+	SourceActorUp		UMETA(ToolTip="Use the source actor's up vector"),
+	CustomUp			UMETA(ToolTip="Use the supplied custom up vector, e.g. the source's gravity up"),
+};
+
 UENUM(BlueprintType)
 enum class EGraspMovementSelectionMode : uint8
 {

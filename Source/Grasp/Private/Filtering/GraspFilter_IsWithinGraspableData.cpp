@@ -37,13 +37,16 @@ bool UGraspFilter_IsWithinGraspableData::ShouldFilterTarget(const FTargetingRequ
 		return true;
 	}
 
+	FVector QueryCustomUp;
+	const EGraspUpMode QueryUpMode = GetUpParams(SourceActor, QueryCustomUp);
+
 	// Check if ANY GraspData entry passes the filter
 	bool bAnyPassesFilter = false;
 	for (int32 i = 0; i < Graspable->GetNumGraspData(); i++)
 	{
 		float NormalizedAngleDiff, NormalizedDistance, NormalizedHighlightDistance = 0.f;
 		const EGraspQueryResult Result = UGraspStatics::CanInteractWith(SourceActor, TargetComponent,
-			NormalizedAngleDiff, NormalizedDistance, NormalizedHighlightDistance, i);
+			NormalizedAngleDiff, NormalizedDistance, NormalizedHighlightDistance, i, QueryUpMode, QueryCustomUp);
 
 		const bool bPasses = (Result == EGraspQueryResult::Interact) ||
 			(Result == EGraspQueryResult::Highlight && Threshold == EGraspQueryResult::Highlight);

@@ -24,9 +24,25 @@ public:
 	UPROPERTY(EditAnywhere, Category="Grasp Filter", meta=(InvalidEnumValues="None"))
 	EGraspQueryResult Threshold = EGraspQueryResult::Interact;
 
+	/** Which up direction the check is measured against */
+	UPROPERTY(EditAnywhere, Category="Grasp Filter")
+	EGraspUpMode UpMode = EGraspUpMode::WorldUp;
+
+	/** The up vector used when UpMode is CustomUp */
+	UPROPERTY(EditAnywhere, Category="Grasp Filter", meta=(EditCondition="UpMode==EGraspUpMode::CustomUp", EditConditionHides))
+	FVector CustomUp = FVector::UpVector;
+
 public:
 	UGraspFilter_IsWithinGraspableAngle(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	/** Called against every target data to determine if the target should be filtered out */
 	virtual bool ShouldFilterTarget(const FTargetingRequestHandle& TargetingHandle, const FTargetingDefaultResultData& TargetData) const override;
+
+protected:
+	/** Up basis for this query; defaults to the configured UpMode/CustomUp. Override to resolve per-interactor. */
+	virtual EGraspUpMode GetUpParams(const AActor* SourceActor, FVector& OutCustomUp) const
+	{
+		OutCustomUp = CustomUp;
+		return UpMode;
+	}
 };

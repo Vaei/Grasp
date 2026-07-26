@@ -869,23 +869,56 @@ FVector UGraspStatics::GetDirectionSnappedToCardinal(const FVector& SourceLocati
 	}
 }
 
+namespace
+{
+	/** Distance between A and B on the plane perpendicular to Up */
+	float GraspPlanarDist(const FVector& A, const FVector& B, const FVector& Up)
+	{
+		return FVector::VectorPlaneProject(B - A, Up).Size();
+	}
+
+	float GraspPlanarDistSquared(const FVector& A, const FVector& B, const FVector& Up)
+	{
+		return FVector::VectorPlaneProject(B - A, Up).SizeSquared();
+	}
+}
+
+FVector UGraspStatics::GetGraspUpVector(EGraspUpMode UpMode, const UPrimitiveComponent* Graspable, FVector CustomUp)
+{
+	switch (UpMode)
+	{
+	case EGraspUpMode::GraspableUp:
+		return Graspable ? Graspable->GetUpVector() : FVector::UpVector;
+	case EGraspUpMode::GraspableOwnerUp:
+		return Graspable && Graspable->GetOwner() ? Graspable->GetOwner()->GetActorUpVector() : FVector::UpVector;
+	case EGraspUpMode::CustomUp:
+		{
+			const FVector Normalized = CustomUp.GetSafeNormal();
+			return Normalized.IsNearlyZero() ? FVector::UpVector : Normalized;
+		}
+	case EGraspUpMode::WorldUp:
+	default:
+		return FVector::UpVector;
+	}
+}
+
 bool UGraspStatics::IsWithinInteractAngle(const FVector& InteractorLocation, const FVector& InteractableLocation, const FVector& Forward, float Degrees, bool bCheck2D, bool
-	bHalfCircle)
+	bHalfCircle, FVector Up)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::IsWithinInteractAngle);
-	
+
 	const FVector Diff = InteractableLocation - InteractorLocation;
-	const FVector Dir = bCheck2D ? Diff.GetSafeNormal2D() : Diff.GetSafeNormal();
+	const FVector Dir = bCheck2D ? FVector::VectorPlaneProject(Diff, Up).GetSafeNormal() : Diff.GetSafeNormal();
 	const float Radians = FMath::DegreesToRadians(Degrees * (bHalfCircle ? 1.f : 0.5f));
 	const float Acos = FMath::Acos(Forward | Dir);
 	return Acos <= Radians;
 }
 
 bool UGraspStatics::IsInteractableWithinAngle(const FVector& InteractorLocation, const FVector& InteractableLocation,
-	const FVector& Forward, float Degrees)
+	const FVector& Forward, float Degrees, FVector Up)
 {
 	return IsWithinInteractAngle(InteractorLocation, InteractableLocation,
-		Forward, Degrees, true, false);
+		Forward, Degrees, true, false, Up);
 }
 
 FVector UGraspStatics::GetGraspableForwardVectorFromTransform(const FTransform& Transform, EGraspForwardAxis Axis,
@@ -933,89 +966,90 @@ FVector UGraspStatics::GetGraspableForwardVector(const UPrimitiveComponent* Gras
 	return GetGraspableForwardVectorFromTransform(Graspable->GetComponentTransform(), Axis, YawOffset);
 }
 
-bool UGraspStatics::CanInteractWithinAngle(const AActor* Interactor, const FVector& InteractableLocation, float Degrees)
+bool UGraspStatics::CanInteractWithinAngle(const AActor* Interactor, const FVector& InteractableLocation, float Degrees,
+	FVector Up)
 {
 	if (!IsValid(Interactor))
 	{
 		return false;
 	}
 	return IsInteractableWithinAngle(InteractableLocation, Interactor->GetActorLocation(),
-		Interactor->GetActorForwardVector(), Degrees);
+		Interactor->GetActorForwardVector(), Degrees, Up);
 }
 
 bool UGraspStatics::IsWithinInteractDistance(const FVector& InteractorLocation, const FVector& InteractableLocation,
-	float Distance, bool bCheck2D)
+	float Distance, bool bCheck2D, FVector Up)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::IsWithinInteractDistance);
-	
+
 	const float DistSquared = bCheck2D ?
-		FVector::DistSquared2D(InteractorLocation, InteractableLocation) : FVector::DistSquared(InteractorLocation, InteractableLocation);
+		GraspPlanarDistSquared(InteractorLocation, InteractableLocation, Up) : FVector::DistSquared(InteractorLocation, InteractableLocation);
 	return DistSquared <= FMath::Square(Distance);
 }
 
 bool UGraspStatics::IsInteractableWithinDistance(const FVector& InteractorLocation, const FVector& InteractableLocation,
-	float Distance, bool bCheck2D)
+	float Distance, bool bCheck2D, FVector Up)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::IsInteractableWithinDistance);
-	
+
 	return IsWithinInteractDistance(InteractorLocation, InteractableLocation,
-		Distance, bCheck2D);
+		Distance, bCheck2D, Up);
 }
 
 bool UGraspStatics::CanInteractWithinDistance(const AActor* Interactor, const FVector& InteractableLocation,
-	float Distance, bool bCheck2D)
+	float Distance, bool bCheck2D, FVector Up)
 {
 	if (!IsValid(Interactor))
 	{
 		return false;
 	}
-	return IsInteractableWithinDistance(InteractableLocation, Interactor->GetActorLocation(), Distance, bCheck2D);
+	return IsInteractableWithinDistance(InteractableLocation, Interactor->GetActorLocation(), Distance, bCheck2D, Up);
 }
 
 bool UGraspStatics::CanInteractWithinAngleAndDistance(const AActor* Interactor, const FVector& InteractableLocation,
-	float Degrees, float Distance)
+	float Degrees, float Distance, FVector Up)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::CanInteractWithinAngleAndDistance);
-	
+
 	if (!IsValid(Interactor))
 	{
 		return false;
 	}
 
 	const bool bWithinAngle = IsInteractableWithinAngle(InteractableLocation,
-		Interactor->GetActorLocation(), Interactor->GetActorForwardVector(), Degrees);
+		Interactor->GetActorLocation(), Interactor->GetActorForwardVector(), Degrees, Up);
 
 	const bool bWithinDistance = IsInteractableWithinDistance(InteractableLocation,
-		Interactor->GetActorLocation(), Distance);
+		Interactor->GetActorLocation(), Distance, true, Up);
 
 	return bWithinAngle && bWithinDistance;
 }
 
 bool UGraspStatics::IsInteractableWithinHeight(const FVector& InteractorLocation, const FVector& InteractableLocation,
-	float MaxHeightAbove, float MaxHeightBelow)
+	float MaxHeightAbove, float MaxHeightBelow, FVector Up)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::IsInteractableWithinHeight);
-	
-	const float Height = InteractableLocation.Z - InteractorLocation.Z;
+
+	const float Height = (InteractableLocation - InteractorLocation) | Up;
 	return Height >= -MaxHeightBelow && Height <= MaxHeightAbove;
 }
 
 bool UGraspStatics::CanInteractWithinHeight(const AActor* Interactor, const FVector& InteractableLocation,
-	float MaxHeightAbove, float MaxHeightBelow)
+	float MaxHeightAbove, float MaxHeightBelow, FVector Up)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::CanInteractWithinHeight);
-	
+
 	if (!IsValid(Interactor))
 	{
 		return false;
 	}
 	return IsInteractableWithinHeight(InteractableLocation, Interactor->GetActorLocation(),
-		MaxHeightAbove, MaxHeightBelow);
+		MaxHeightAbove, MaxHeightBelow, Up);
 }
 
 EGraspQueryResult UGraspStatics::CanInteractWith(const AActor* Interactor, const UPrimitiveComponent* Component,
 	float& NormalizedAngleDiff, float& NormalizedDistance, float& NormalizedHighlightDistance,
-	int32 GraspDataIndex)
+	int32 GraspDataIndex, EGraspUpMode UpMode, FVector CustomUp)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::CanInteractWith);
 	
@@ -1046,6 +1080,7 @@ EGraspQueryResult UGraspStatics::CanInteractWith(const AActor* Interactor, const
 	const FVector InteractorLocation = Interactor->GetActorLocation();
 	const FVector Location = Component->GetComponentLocation();
 	const FVector Forward = GetGraspableForwardVector(Component, Data);
+	const FVector Up = GetGraspUpVector(UpMode, Component, CustomUp);
 
 	const float AuthNetToleranceAngleScalar = Data->GetAuthNetToleranceAngleScalar();
 	const float AuthNetToleranceDistanceScalar = Data->GetAuthNetToleranceDistanceScalar();
@@ -1067,13 +1102,13 @@ EGraspQueryResult UGraspStatics::CanInteractWith(const AActor* Interactor, const
 	const float MaxHeightBelow = bApplyAuthScalar ? BaseHeightBelow * AuthNetToleranceDistanceScalar : BaseHeightBelow;
 	
 	// Check if within distance
-	if (!IsInteractableWithinDistance(Location, InteractorLocation, Distance))
+	if (!IsInteractableWithinDistance(Location, InteractorLocation, Distance, true, Up))
 	{
 		// Check if highlight is enabled and within distance
-		if (HighlightDistance > 0.f && IsInteractableWithinDistance(Location, InteractorLocation, HighlightDistance))
+		if (HighlightDistance > 0.f && IsInteractableWithinDistance(Location, InteractorLocation, HighlightDistance, true, Up))
 		{
 			NormalizedHighlightDistance = FMath::Clamp(
-				FVector::Dist2D(Location, InteractorLocation) / HighlightDistance, 0.f, 1.f);
+				GraspPlanarDist(Location, InteractorLocation, Up) / HighlightDistance, 0.f, 1.f);
 
 			// We sorted by distance, if this one is too far, the rest are too
 			return EGraspQueryResult::Highlight;
@@ -1083,21 +1118,21 @@ EGraspQueryResult UGraspStatics::CanInteractWith(const AActor* Interactor, const
 		return EGraspQueryResult::None;
 	}
 
-	const float DistNormalized = Data->IsGraspDistance2D(Interactor) ? FVector::Dist2D(Location, InteractorLocation) :
+	const float DistNormalized = Data->IsGraspDistance2D(Interactor) ? GraspPlanarDist(Location, InteractorLocation, Up) :
 		FVector::Dist(Location, InteractorLocation);
 	NormalizedDistance = FMath::Clamp(DistNormalized / Distance, 0.f, 1.f);
 
 	// Check if within angle
-	if (!IsInteractableWithinAngle(Location, InteractorLocation, Forward, Angle))
+	if (!IsInteractableWithinAngle(Location, InteractorLocation, Forward, Angle, Up))
 	{
 		return EGraspQueryResult::None;
 	}
-	
+
 	NormalizedAngleDiff = FMath::Clamp(
-		FVector::Dist2D(Location, InteractorLocation) / Angle, 0.f, 1.f);
+		GraspPlanarDist(Location, InteractorLocation, Up) / Angle, 0.f, 1.f);
 
 	// Check if within height
-	if (!IsInteractableWithinHeight(Location, InteractorLocation, MaxHeightAbove, MaxHeightBelow))
+	if (!IsInteractableWithinHeight(Location, InteractorLocation, MaxHeightAbove, MaxHeightBelow, Up))
 	{
 		return EGraspQueryResult::None;
 	}
@@ -1107,7 +1142,7 @@ EGraspQueryResult UGraspStatics::CanInteractWith(const AActor* Interactor, const
 
 EGraspQueryResult UGraspStatics::CanInteractWithRange(const AActor* Interactor, const UPrimitiveComponent* Graspable,
 	float& NormalizedDistance, float& NormalizedHighlightDistance,
-	int32 GraspDataIndex)
+	int32 GraspDataIndex, EGraspUpMode UpMode, FVector CustomUp)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::CanInteractWithRange);
 
@@ -1143,14 +1178,16 @@ EGraspQueryResult UGraspStatics::CanInteractWithRange(const AActor* Interactor, 
 	const float HighlightDistance = bApplyAuthScalar ?
 		Data->MaxHighlightDistance * AuthNetToleranceDistanceScalar : Data->MaxHighlightDistance;
 
+	const FVector Up = GetGraspUpVector(UpMode, Graspable, CustomUp);
+
 	// Check if within distance
-	if (!IsInteractableWithinDistance(Location, InteractorLocation, Distance))
+	if (!IsInteractableWithinDistance(Location, InteractorLocation, Distance, true, Up))
 	{
 		// Check if highlight is enabled and within distance
-		if (HighlightDistance > 0.f && IsInteractableWithinDistance(Location, InteractorLocation, HighlightDistance))
+		if (HighlightDistance > 0.f && IsInteractableWithinDistance(Location, InteractorLocation, HighlightDistance, true, Up))
 		{
 			NormalizedHighlightDistance = FMath::Clamp(
-				FVector::Dist2D(Location, InteractorLocation) / HighlightDistance, 0.f, 1.f);
+				GraspPlanarDist(Location, InteractorLocation, Up) / HighlightDistance, 0.f, 1.f);
 
 			return EGraspQueryResult::Highlight;
 		}
@@ -1158,7 +1195,7 @@ EGraspQueryResult UGraspStatics::CanInteractWithRange(const AActor* Interactor, 
 		return EGraspQueryResult::None;
 	}
 
-	const float DistNormalized = Data->IsGraspDistance2D(Interactor) ? FVector::Dist2D(Location, InteractorLocation) :
+	const float DistNormalized = Data->IsGraspDistance2D(Interactor) ? GraspPlanarDist(Location, InteractorLocation, Up) :
 		FVector::Dist(Location, InteractorLocation);
 
 	NormalizedDistance = FMath::Clamp(DistNormalized / Distance, 0.f, 1.f);
@@ -1167,7 +1204,7 @@ EGraspQueryResult UGraspStatics::CanInteractWithRange(const AActor* Interactor, 
 }
 
 bool UGraspStatics::CanInteractWithAngle(const AActor* Interactor, const UPrimitiveComponent* Graspable,
-	float& NormalizedAngleDiff, int32 GraspDataIndex)
+	float& NormalizedAngleDiff, int32 GraspDataIndex, EGraspUpMode UpMode, FVector CustomUp)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::CanInteractWithAngle);
 
@@ -1194,6 +1231,7 @@ bool UGraspStatics::CanInteractWithAngle(const AActor* Interactor, const UPrimit
 	const FVector InteractorLocation = Interactor->GetActorLocation();
 	const FVector Location = Graspable->GetComponentLocation();
 	const FVector Forward = GetGraspableForwardVector(Graspable, Data);
+	const FVector Up = GetGraspUpVector(UpMode, Graspable, CustomUp);
 
 	const float AuthNetToleranceAngleScalar = Data->GetAuthNetToleranceAngleScalar();
 	const bool bApplyAuthScalar = Interactor->HasAuthority() && Interactor->GetNetMode() != NM_Standalone;
@@ -1202,21 +1240,21 @@ bool UGraspStatics::CanInteractWithAngle(const AActor* Interactor, const UPrimit
 	const float Angle = bApplyAuthScalar ? BaseAngle * AuthNetToleranceAngleScalar : BaseAngle;
 
 	// Check if within angle
-	if (!IsInteractableWithinAngle(Location, InteractorLocation, Forward, Angle))
+	if (!IsInteractableWithinAngle(Location, InteractorLocation, Forward, Angle, Up))
 	{
 		return false;
 	}
 
 	const float AngleNormalized = FMath::Clamp(
-		FVector::Dist2D(Location, InteractorLocation) / Angle, 0.f, 1.f);
-	
+		GraspPlanarDist(Location, InteractorLocation, Up) / Angle, 0.f, 1.f);
+
 	NormalizedAngleDiff = AngleNormalized;
 
 	return true;
 }
 
 bool UGraspStatics::CanInteractWithHeight(const AActor* Interactor, const UPrimitiveComponent* Graspable,
-	int32 GraspDataIndex)
+	int32 GraspDataIndex, EGraspUpMode UpMode, FVector CustomUp)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(GraspStatics::CanInteractWithHeight);
 
@@ -1249,7 +1287,8 @@ bool UGraspStatics::CanInteractWithHeight(const AActor* Interactor, const UPrimi
 	const float BaseHeightBelow = Data->GetMaxHeightBelow(Interactor);
 	const float MaxHeightBelow = bApplyAuthScalar ? BaseHeightBelow * AuthNetToleranceDistanceScalar : BaseHeightBelow;
 
-	return IsInteractableWithinHeight(Location, InteractorLocation, MaxHeightAbove, MaxHeightBelow);
+	return IsInteractableWithinHeight(Location, InteractorLocation, MaxHeightAbove, MaxHeightBelow,
+		GetGraspUpVector(UpMode, Graspable, CustomUp));
 }
 
 float UGraspStatics::GetNormalizedDistanceBetweenInteractAndHighlight(const UGraspData* GraspData,
@@ -1295,7 +1334,8 @@ FVector2D UGraspStatics::GetScreenPositionForGraspableComponent(const UPrimitive
 
 EGraspInteractionLocationResult UGraspStatics::GetInteractionLocationForGraspable(const FVector& InteractorLocation,
 	const UPrimitiveComponent* GraspableComponent, FVector& OutLocation,
-	int32 GraspDataIndex, float AngleAlpha, float DistanceAlpha, const AActor* Interactor)
+	int32 GraspDataIndex, float AngleAlpha, float DistanceAlpha, const AActor* Interactor,
+	EGraspUpMode UpMode, FVector CustomUp)
 {
 	OutLocation = FVector::ZeroVector;
 
@@ -1312,18 +1352,19 @@ EGraspInteractionLocationResult UGraspStatics::GetInteractionLocationForGraspabl
 
 	const FVector GraspableLocation = GraspableComponent->GetComponentLocation();
 	const FVector GraspableForward = GetGraspableForwardVector(GraspableComponent, GraspData);
+	const FVector Up = GetGraspUpVector(UpMode, GraspableComponent, CustomUp);
 
 	const float MaxGraspAngle = GraspData->GetMaxGraspAngle(Interactor);
 	const float MaxGraspDistance = GraspData->GetMaxGraspDistance(Interactor);
 	const bool bDistance2D = GraspData->IsGraspDistance2D(Interactor);
 
 	const float CurrentDist = bDistance2D
-		? FVector::Dist2D(InteractorLocation, GraspableLocation)
+		? GraspPlanarDist(InteractorLocation, GraspableLocation, Up)
 		: FVector::Dist(InteractorLocation, GraspableLocation);
 
 	const bool bInDistance = CurrentDist <= MaxGraspDistance;
 	const bool bInAngle = (MaxGraspAngle >= 360.f) ||
-		IsInteractableWithinAngle(GraspableLocation, InteractorLocation, GraspableForward, MaxGraspAngle);
+		IsInteractableWithinAngle(GraspableLocation, InteractorLocation, GraspableForward, MaxGraspAngle, Up);
 
 	// Case 1: Already valid
 	if (bInDistance && bInAngle)
@@ -1347,18 +1388,18 @@ EGraspInteractionLocationResult UGraspStatics::GetInteractionLocationForGraspabl
 	if (bInAngle)
 	{
 		// Case 2: In angle, out of distance. Move straight toward the graspable along current direction.
-		TargetDir = (InteractorLocation - GraspableLocation).GetSafeNormal2D();
+		TargetDir = FVector::VectorPlaneProject(InteractorLocation - GraspableLocation, Up).GetSafeNormal();
 	}
 	else
 	{
 		// Cases 3 & 4: Out of angle. Compute which side of the cone is nearest and clamp.
-		const FVector ToInteractor = (InteractorLocation - GraspableLocation).GetSafeNormal2D();
-		const FVector Forward2D = GraspableForward.GetSafeNormal2D();
+		const FVector ToInteractor = FVector::VectorPlaneProject(InteractorLocation - GraspableLocation, Up).GetSafeNormal();
+		const FVector Forward2D = FVector::VectorPlaneProject(GraspableForward, Up).GetSafeNormal();
 
 		float CurrentAngleSign = 1.f;
 		if (!ToInteractor.IsNearlyZero() && !Forward2D.IsNearlyZero())
 		{
-			CurrentAngleSign = FMath::Sign(FVector::CrossProduct(Forward2D, ToInteractor).Z);
+			CurrentAngleSign = FMath::Sign(FVector::CrossProduct(Forward2D, ToInteractor) | Up);
 			if (FMath::IsNearlyZero(CurrentAngleSign))
 			{
 				CurrentAngleSign = 1.f;
@@ -1366,7 +1407,7 @@ EGraspInteractionLocationResult UGraspStatics::GetInteractionLocationForGraspabl
 		}
 
 		// Place at the nearest cone edge, pulled inward by AngleAlpha
-		TargetDir = Forward2D.RotateAngleAxis(MaxAllowedAngle * CurrentAngleSign, FVector::UpVector);
+		TargetDir = Forward2D.RotateAngleAxis(MaxAllowedAngle * CurrentAngleSign, Up);
 	}
 
 	// Determine the target distance.
@@ -1378,7 +1419,8 @@ EGraspInteractionLocationResult UGraspStatics::GetInteractionLocationForGraspabl
 
 	if (bDistance2D)
 	{
-		OutLocation.Z = GraspableLocation.Z;
+		// Drop onto the plane through the graspable perpendicular to Up
+		OutLocation += ((GraspableLocation - OutLocation) | Up) * Up;
 	}
 
 	return EGraspInteractionLocationResult::NeedsToMove;

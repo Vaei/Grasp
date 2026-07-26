@@ -42,6 +42,18 @@ enum class EGraspQueryResult : uint8
 };
 
 /**
+ * Which up direction grasp spatial checks (angle, distance, height) are measured against
+ */
+UENUM(BlueprintType)
+enum class EGraspUpMode : uint8
+{
+	WorldUp				UMETA(ToolTip="Use the world up vector (+Z)"),
+	GraspableUp			UMETA(ToolTip="Use the graspable component's up vector"),
+	GraspableOwnerUp	UMETA(ToolTip="Use the up vector of the graspable component's owning actor"),
+	CustomUp			UMETA(ToolTip="Use the supplied custom up vector, e.g. the interactor's gravity up"),
+};
+
+/**
  * Focus handling for the Grasp system
  * Not implemented by default but common enough that it should be here
  */

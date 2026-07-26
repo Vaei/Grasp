@@ -37,11 +37,14 @@ bool UGraspFilter_IsWithinGraspableAngle::ShouldFilterTarget(const FTargetingReq
 		return true;
 	}
 
+	FVector QueryCustomUp;
+	const EGraspUpMode QueryUpMode = GetUpParams(SourceActor, QueryCustomUp);
+
 	// Check if ANY GraspData entry passes the angle filter
 	for (int32 i = 0; i < Graspable->GetNumGraspData(); i++)
 	{
 		float NormalizedAngle = 0.f;
-		if (UGraspStatics::CanInteractWithAngle(SourceActor, TargetComponent, NormalizedAngle, i))
+		if (UGraspStatics::CanInteractWithAngle(SourceActor, TargetComponent, NormalizedAngle, i, QueryUpMode, QueryCustomUp))
 		{
 			return false;
 		}

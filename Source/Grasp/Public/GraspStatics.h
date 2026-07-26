@@ -250,17 +250,29 @@ public:
 
 public:
 	/**
+	 * Resolve the up vector that grasp spatial checks are measured against
+	 * @param UpMode How to resolve the up vector
+	 * @param Graspable The graspable component (used by GraspableUp and GraspableOwnerUp)
+	 * @param CustomUp The up vector used when UpMode is CustomUp
+	 */
+	UFUNCTION(BlueprintPure, Category=Grasp)
+	static FVector GetGraspUpVector(EGraspUpMode UpMode, const UPrimitiveComponent* Graspable,
+		FVector CustomUp = FVector(0.f, 0.f, 1.f));
+
+	/**
 	 * Check if the TargetLocation is within the angle of the FacingVector
 	 * @param InteractorLocation The location of the source
 	 * @param InteractableLocation The location of the target
 	 * @param Forward The facing vector of the target
 	 * @param Degrees The angle in degrees
-	 * @param bCheck2D If true, only the X and Y components of the vectors will be used
+	 * @param bCheck2D If true, the direction is flattened onto the plane perpendicular to Up
 	 * @param bHalfCircle If true, the angle will be halved (i.e. 360 degrees becomes 180 degrees)
+	 * @param Up The up vector the check is measured against
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static bool IsWithinInteractAngle(const FVector& InteractorLocation, const FVector& InteractableLocation,
-		const FVector& Forward, float Degrees, bool bCheck2D = true, bool bHalfCircle = false);
+		const FVector& Forward, float Degrees, bool bCheck2D = true, bool bHalfCircle = false,
+		FVector Up = FVector(0.f, 0.f, 1.f));
 
 	/**
 	 * Check if the Interactor is within the angle of the Interactable
@@ -268,10 +280,11 @@ public:
 	 * @param InteractableLocation The location of the interactable
 	 * @param Forward The facing vector of the interactable
 	 * @param Degrees The angle in degrees
+	 * @param Up The up vector the check is measured against
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static bool IsInteractableWithinAngle(const FVector& InteractorLocation, const FVector& InteractableLocation,
-		const FVector& Forward, float Degrees);
+		const FVector& Forward, float Degrees, FVector Up = FVector(0.f, 0.f, 1.f));
 
 	/**
 	 * World-space forward vector for a graspable component, respecting its local
@@ -309,39 +322,44 @@ public:
 	 * @param Degrees The angle in degrees
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
-	static bool CanInteractWithinAngle(const AActor* Interactor, const FVector& InteractableLocation, float Degrees);
+	static bool CanInteractWithinAngle(const AActor* Interactor, const FVector& InteractableLocation, float Degrees,
+		FVector Up = FVector(0.f, 0.f, 1.f));
 
-	/** 
+	/**
 	 * Check if the SourceLocation is within distance to the TargetLocation
 	 * @param InteractorLocation The location of the source
 	 * @param InteractableLocation The location of the target
 	 * @param Distance The distance to check
-	 * @param bCheck2D If true, only the X and Y components of the vectors will be used
+	 * @param bCheck2D If true, the distance is measured on the plane perpendicular to Up
+	 * @param Up The up vector the check is measured against
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static bool IsWithinInteractDistance(const FVector& InteractorLocation, const FVector& InteractableLocation,
-		float Distance, bool bCheck2D = true);
+		float Distance, bool bCheck2D = true, FVector Up = FVector(0.f, 0.f, 1.f));
 
-	/** 
+	/**
 	 * Check if the Interactor is within distance to the Interactable
 	 * @param InteractorLocation The location of the interactor
 	 * @param InteractableLocation The location of the interactable
 	 * @param Distance The distance to check
-	 * @param bCheck2D If true, only the X and Y components of the vectors will be used
+	 * @param bCheck2D If true, the distance is measured on the plane perpendicular to Up
+	 * @param Up The up vector the check is measured against
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static bool IsInteractableWithinDistance(const FVector& InteractorLocation, const FVector& InteractableLocation,
-		float Distance, bool bCheck2D = true);
+		float Distance, bool bCheck2D = true, FVector Up = FVector(0.f, 0.f, 1.f));
 
-	/** 
+	/**
 	 * Check if the Interactor is within distance to the Interactable
 	 * @param Interactor The interactor actor
 	 * @param InteractableLocation The location of the interactable
 	 * @param Distance The distance to check
-	 * @param bCheck2D If true, only the X and Y components of the vectors will be used
+	 * @param bCheck2D If true, the distance is measured on the plane perpendicular to Up
+	 * @param Up The up vector the check is measured against
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
-	static bool CanInteractWithinDistance(const AActor* Interactor, const FVector& InteractableLocation, float Distance, bool bCheck2D = true);
+	static bool CanInteractWithinDistance(const AActor* Interactor, const FVector& InteractableLocation, float Distance,
+		bool bCheck2D = true, FVector Up = FVector(0.f, 0.f, 1.f));
 
 	/**
 	 * Check if the Interactor is within angle and distance to the Interactable
@@ -349,32 +367,35 @@ public:
 	 * @param InteractableLocation The location of the interactable
 	 * @param Degrees The angle in degrees
 	 * @param Distance The distance to check
+	 * @param Up The up vector the check is measured against
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static bool CanInteractWithinAngleAndDistance(const AActor* Interactor, const FVector& InteractableLocation,
-		float Degrees, float Distance);
+		float Degrees, float Distance, FVector Up = FVector(0.f, 0.f, 1.f));
 
-	/** 
+	/**
 	 * Check if the Interactor is within height of the Interactable
 	 * @param InteractorLocation The location of the source
 	 * @param InteractableLocation The location of the target
 	 * @param MaxHeightAbove The maximum height above the interactable
 	 * @param MaxHeightBelow The maximum height below the interactable
+	 * @param Up The up vector the height is measured along
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static bool IsInteractableWithinHeight(const FVector& InteractorLocation, const FVector& InteractableLocation,
-		float MaxHeightAbove, float MaxHeightBelow);
+		float MaxHeightAbove, float MaxHeightBelow, FVector Up = FVector(0.f, 0.f, 1.f));
 
-	/** 
+	/**
 	 * Check if the Interactor is within height of the Interactable
 	 * @param Interactor The interactor actor
 	 * @param InteractableLocation The location of the interactable
 	 * @param MaxHeightAbove The maximum height above the interactable
 	 * @param MaxHeightBelow The maximum height below the interactable
+	 * @param Up The up vector the height is measured along
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static bool CanInteractWithinHeight(const AActor* Interactor, const FVector& InteractableLocation,
-		float MaxHeightAbove, float MaxHeightBelow);
+		float MaxHeightAbove, float MaxHeightBelow, FVector Up = FVector(0.f, 0.f, 1.f));
 
 	/**
 	 * Check if the Interactor is within angle, distance and height to the Interactable
@@ -383,11 +404,14 @@ public:
 	 * @param NormalizedAngleDiff The normalized angle difference between the interactor and the graspable
 	 * @param NormalizedDistance The normalized distance between the interactor and the graspable
 	 * @param NormalizedHighlightDistance The normalized highlight distance between the interactor and the graspable
+	 * @param UpMode Which up direction the checks are measured against
+	 * @param CustomUp The up vector used when UpMode is CustomUp
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static EGraspQueryResult CanInteractWith(const AActor* Interactor, const UPrimitiveComponent* Graspable,
 		float& NormalizedAngleDiff, float& NormalizedDistance, float& NormalizedHighlightDistance,
-		int32 GraspDataIndex = 0);
+		int32 GraspDataIndex = 0, EGraspUpMode UpMode = EGraspUpMode::WorldUp,
+		FVector CustomUp = FVector(0.f, 0.f, 1.f));
 
 	/**
 	 * Check if the Interactor is within distance to the Interactable
@@ -395,30 +419,39 @@ public:
 	 * @param Graspable The graspable (interactable) component
 	 * @param NormalizedDistance The normalized distance between the interactor and the graspable
 	 * @param NormalizedHighlightDistance The normalized highlight distance between the interactor and the graspable
+	 * @param UpMode Which up direction the checks are measured against
+	 * @param CustomUp The up vector used when UpMode is CustomUp
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static EGraspQueryResult CanInteractWithRange(const AActor* Interactor, const UPrimitiveComponent* Graspable,
 		float& NormalizedDistance, float& NormalizedHighlightDistance,
-		int32 GraspDataIndex = 0);
+		int32 GraspDataIndex = 0, EGraspUpMode UpMode = EGraspUpMode::WorldUp,
+		FVector CustomUp = FVector(0.f, 0.f, 1.f));
 
 	/**
 	 * Check if the Interactor is within angle to the Interactable
 	 * @param Interactor The interactor actor
 	 * @param Graspable The graspable (interactable) component
 	 * @param NormalizedAngleDiff The normalized angle difference between the interactor and the graspable
+	 * @param UpMode Which up direction the checks are measured against
+	 * @param CustomUp The up vector used when UpMode is CustomUp
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static bool CanInteractWithAngle(const AActor* Interactor, const UPrimitiveComponent* Graspable,
-		float& NormalizedAngleDiff, int32 GraspDataIndex = 0);
+		float& NormalizedAngleDiff, int32 GraspDataIndex = 0, EGraspUpMode UpMode = EGraspUpMode::WorldUp,
+		FVector CustomUp = FVector(0.f, 0.f, 1.f));
 
 	/**
 	 * Check if the Interactor is within height above and below to the Interactable
 	 * @param Interactor The interactor actor
 	 * @param Graspable The graspable (interactable) component
+	 * @param UpMode Which up direction the checks are measured against
+	 * @param CustomUp The up vector used when UpMode is CustomUp
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static bool CanInteractWithHeight(const AActor* Interactor, const UPrimitiveComponent* Graspable,
-		int32 GraspDataIndex = 0);
+		int32 GraspDataIndex = 0, EGraspUpMode UpMode = EGraspUpMode::WorldUp,
+		FVector CustomUp = FVector(0.f, 0.f, 1.f));
 
 public:
 	/**
@@ -435,13 +468,16 @@ public:
 	 * @param AngleAlpha How far into the valid angle range to position (0.0 = dead center facing the forward, 1.0 = extreme edge of MaxGraspAngle). Use ~0.05-0.1 to stay safely inside the range.
 	 * @param DistanceAlpha How far into the valid distance range to position (0.0 = at the graspable, 1.0 = at MaxGraspDistance). Use ~0.5-0.7 for a comfortable interaction distance.
 	 * @param Interactor Optional interactor actor. If supplied and the graspable's data has bAIUseSeparateParams, bot-controlled pawns will resolve their AI variant of angle/distance instead of the defaults.
+	 * @param UpMode Which up direction the computation is measured against
+	 * @param CustomUp The up vector used when UpMode is CustomUp
 	 * @return Failed, AlreadyInRange, or NeedsToMove
 	 */
 	UFUNCTION(BlueprintCallable, Category=Grasp)
 	static EGraspInteractionLocationResult GetInteractionLocationForGraspable(const FVector& InteractorLocation,
 		const UPrimitiveComponent* GraspableComponent, FVector& OutLocation,
 		int32 GraspDataIndex = 0, float AngleAlpha = 1.f, float DistanceAlpha = 1.f,
-		const AActor* Interactor = nullptr);
+		const AActor* Interactor = nullptr, EGraspUpMode UpMode = EGraspUpMode::WorldUp,
+		FVector CustomUp = FVector(0.f, 0.f, 1.f));
 
 	/**
 	 * Get the normalized distance between interact and highlight distances

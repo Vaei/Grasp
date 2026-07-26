@@ -37,10 +37,13 @@ bool UGraspFilter_IsWithinGraspableHeight::ShouldFilterTarget(const FTargetingRe
 		return true;
 	}
 
+	FVector QueryCustomUp;
+	const EGraspUpMode QueryUpMode = GetUpParams(SourceActor, QueryCustomUp);
+
 	// Check if ANY GraspData entry passes the height filter
 	for (int32 i = 0; i < Graspable->GetNumGraspData(); i++)
 	{
-		if (UGraspStatics::CanInteractWithHeight(SourceActor, TargetComponent, i))
+		if (UGraspStatics::CanInteractWithHeight(SourceActor, TargetComponent, i, QueryUpMode, QueryCustomUp))
 		{
 			return false;
 		}

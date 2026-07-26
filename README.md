@@ -64,6 +64,10 @@ Build your interaction abilities rapidly with useful functions to save you time.
 
 ## Changelog
 
+### 1.5.0
+* Support custom up vector for interaction checks
+	* If using CustomUp mode you will probably want to subclass the grasp filters and override `GetUpParams`
+
 ### 1.4.7
 * Support for different entry states
 	* e.g. Sitting on a bench, you can toggle the state to lay on it instead and vice-versa; this would support entering directly into the laying state instead of the sitting state

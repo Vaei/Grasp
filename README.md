@@ -64,6 +64,9 @@ Build your interaction abilities rapidly with useful functions to save you time.
 
 ## Changelog
 
+### 1.5.1
+* Base Relative interaction queries - improve interaction test results for characters standing on a moving base
+
 ### 1.5.0
 * Support custom up vector for interaction checks
 	* If using CustomUp mode you will probably want to subclass the grasp filters and override `GetUpParams`

@@ -29,6 +29,57 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(GraspStatics)
 
+namespace GraspBaseFrame
+{
+	/**
+	 * A character standing on a moving component has its world location written against that component's pose at carry
+	 * time, while a graspable attached to the same component is read at whatever pose that component holds when the
+	 * query runs. Comparing the two world locations directly leaks the component's motion between those two instants
+	 * into the distance, angle and height checks. Re-express the interactor through the pose the graspable is read at,
+	 * so the motion cancels and the query sees the same relationship both ends see.
+	 */
+	static bool GetInteractorLocationInBaseFrame(const AActor* Interactor, const UPrimitiveComponent* Graspable,
+		FVector& OutLocation)
+	{
+		const ACharacter* Character = Cast<ACharacter>(Interactor);
+		if (!Character)
+		{
+			return false;
+		}
+
+		const UCharacterMovementComponent* Movement = Character->GetCharacterMovement();
+		const FMovementBaseInterfaceData* BaseData = Movement ? Movement->GetMovementBaseInterfaceData() : nullptr;
+		const FBasedMovementInfo& BasedMovement = Character->GetBasedMovement();
+		if (!MovementBaseUtility::IsMovementBaseDataValid(BaseData) || !MovementBaseUtility::UseRelativeLocation(BaseData))
+		{
+			return false;
+		}
+
+		const AActor* BaseOwner = Cast<AActor>(BaseData->GetMovementBaseObjectOwner());
+		const AActor* GraspableOwner = Graspable ? Graspable->GetOwner() : nullptr;
+		if (!BaseOwner || !GraspableOwner)
+		{
+			return false;
+		}
+
+		// Only meaningful when the graspable rides the same frame the interactor is standing in.
+		if (BaseOwner != GraspableOwner && !GraspableOwner->IsBasedOnActor(BaseOwner))
+		{
+			return false;
+		}
+
+		FVector BaseLocation;
+		FQuat BaseQuat;
+		if (!MovementBaseUtility::GetMovementBaseTransform(BaseData, BasedMovement.BoneName, BaseLocation, BaseQuat))
+		{
+			return false;
+		}
+
+		OutLocation = BaseLocation + BaseQuat.RotateVector(FVector(BasedMovement.Location));
+		return true;
+	}
+}
+
 
 FGameplayAbilitySpec* UGraspStatics::FindGraspAbilitySpec(const UAbilitySystemComponent* ASC,
 	const UPrimitiveComponent* GraspableComponent, int32 GraspDataIndex)
@@ -1077,7 +1128,9 @@ EGraspQueryResult UGraspStatics::CanInteractWith(const AActor* Interactor, const
 		return EGraspQueryResult::None;
 	}
 
-	const FVector InteractorLocation = Interactor->GetActorLocation();
+	FVector InteractorLocation = Interactor->GetActorLocation();
+	GraspBaseFrame::GetInteractorLocationInBaseFrame(Interactor, Component, InteractorLocation);
+
 	const FVector Location = Component->GetComponentLocation();
 	const FVector Forward = GetGraspableForwardVector(Component, Data);
 	const FVector Up = GetGraspUpVector(UpMode, Component, CustomUp);
@@ -1161,7 +1214,9 @@ EGraspQueryResult UGraspStatics::CanInteractWithRange(const AActor* Interactor, 
 		return EGraspQueryResult::None;
 	}
 
-	const FVector InteractorLocation = Interactor->GetActorLocation();
+	FVector InteractorLocation = Interactor->GetActorLocation();
+	GraspBaseFrame::GetInteractorLocationInBaseFrame(Interactor, Graspable, InteractorLocation);
+
 	const FVector Location = Graspable->GetComponentLocation();
 	const UGraspData* Data = CastChecked<IGraspableComponent>(Graspable)->GetGraspData(GraspDataIndex);
 	if (!Data)
@@ -1228,7 +1283,9 @@ bool UGraspStatics::CanInteractWithAngle(const AActor* Interactor, const UPrimit
 		return false;
 	}
 
-	const FVector InteractorLocation = Interactor->GetActorLocation();
+	FVector InteractorLocation = Interactor->GetActorLocation();
+	GraspBaseFrame::GetInteractorLocationInBaseFrame(Interactor, Graspable, InteractorLocation);
+
 	const FVector Location = Graspable->GetComponentLocation();
 	const FVector Forward = GetGraspableForwardVector(Graspable, Data);
 	const FVector Up = GetGraspUpVector(UpMode, Graspable, CustomUp);
@@ -1270,7 +1327,9 @@ bool UGraspStatics::CanInteractWithHeight(const AActor* Interactor, const UPrimi
 		return false;
 	}
 
-	const FVector InteractorLocation = Interactor->GetActorLocation();
+	FVector InteractorLocation = Interactor->GetActorLocation();
+	GraspBaseFrame::GetInteractorLocationInBaseFrame(Interactor, Graspable, InteractorLocation);
+
 	const FVector Location = Graspable->GetComponentLocation();
 	const UGraspData* Data = CastChecked<IGraspableComponent>(Graspable)->GetGraspData(GraspDataIndex);
 	if (!Data)
